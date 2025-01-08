@@ -1,0 +1,6 @@
+option('build_demo',
+       type : 'boolean', value: false,
+       description : 'Build demo applications')
+option('debug_mode',
+       type : 'boolean', value: false,
+       description : 'Enable debug output mode')
