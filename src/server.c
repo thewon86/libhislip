@@ -93,7 +93,7 @@ static void hs_process(int socket, hs_server_t *server)
          */
 
         // Receive message header (blocking until data available)
-        if ((bytes_read = server->tcp_read(socket, &msg_header, MSG_HEADER_SIZE, 0)) == 0)
+        if ((bytes_read = server->tcp_read(socket, &msg_header, MSG_HEADER_SIZE, 0)) <= 0)
         {
             debug_printf("Client closed connection (socket = %d)\n", socket);
             server->tcp_stop(socket);
@@ -149,7 +149,7 @@ static void hs_process(int socket, hs_server_t *server)
             }
 
             // Read payload
-            if ((bytes_read = server->tcp_read(socket, payload, msg_header.payload_length, 0)) == 0)
+            if ((bytes_read = server->tcp_read(socket, payload, msg_header.payload_length, server->config->message_timeout)) <= 0)
             {
                 debug_printf("Client closed connection\n");
                 server->tcp_stop(socket);

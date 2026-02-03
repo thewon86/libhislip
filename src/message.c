@@ -233,7 +233,7 @@ int msg_receive(int socket, void **message, uint64_t payload_size_max, int timeo
 
         while (bytes_left_to_read > 0)
         {
-            if ((bytes_read = tcp_read(socket, payload_p, bytes_left_to_read, timeout)) == 0)
+            if ((bytes_read = tcp_read(socket, payload_p, bytes_left_to_read, timeout)) <= 0)
             {
                 debug_printf("Server closed connection (2)\n");
                 tcp_disconnect(socket);
