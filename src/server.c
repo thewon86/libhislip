@@ -221,6 +221,31 @@ static void hs_process(int socket, hs_server_t *server)
 
                 break;
 
+            case AsyncLock:
+                debug_printf("Received AsyncLock message!\n");
+
+                received_SessionID = msg_header.parameter;
+                debug_printf("Received SessionID = %d\n", received_SessionID);
+
+                if (msg_header.control_code == CC_REQUEST) {
+                    control_code = CC_REQUEST_RSP_SUCCESS;
+                } else if (msg_header.control_code == CC_RELEASE) {
+                    control_code = CC_RELEASE_RSP_SUCCESS_SHARED;
+                } else {
+                    control_code = CC_REQUEST_RSP_SUCCESS;
+                }
+                msg_create(&message, AsyncLockResponse, control_code, 0, 0, NULL);
+
+                // Send InitializeResponse message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent AsyncLockResponse message\n");
+            break;
+
+            case AsyncLockResponse:
+                break;
+
             case InitializeResponse:
                 break;
 
