@@ -269,6 +269,7 @@ static void hs_process(int socket, hs_server_t *server)
             case FatalError:
                 break;
             default:
+                error_printf("Unkown message type: %u!!!\n", msg_header.type);
                 break;
         }
     }
