@@ -284,7 +284,7 @@ static void connection_callback(int socket, void *data)
 EXPORT int hs_server_run(hs_server_t *server)
 {
     // Start server
-    debug_printf("Starting HiSLIP server\n");
+    debug_printf("Starting HiSLIP server. Ver:%d.%d\n", HISLIP_VERSION_MAJOR, HISLIP_VERSION_MINOR);
     server->tcp_start(server->config->port, server->config->connections_max, connection_callback, server);
 
     return 0;
