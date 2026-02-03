@@ -164,6 +164,7 @@ static void hs_process(int socket, hs_server_t *server)
             uint8_t control_code;;
             uint32_t parameter;
             uint32_t message_id;
+            int received_SessionID;
 
             case Initialize:
                 {
@@ -222,10 +223,11 @@ static void hs_process(int socket, hs_server_t *server)
 
             case InitializeResponse:
                 break;
+
             case AsyncInitialize:
                 debug_printf("Received AsyncInitialize message!\n");
 
-                int received_SessionID = msg_header.parameter;
+                received_SessionID = msg_header.parameter;
                 debug_printf("Received SessionID = %d\n", received_SessionID);
 
                 // Construct AsyncInitializeResponse message including
@@ -240,6 +242,7 @@ static void hs_process(int socket, hs_server_t *server)
                 debug_printf("Sent AsyncInitializeResponse message\n");
 
                 break;
+
             case AsyncInitializeResponse:
                 break;
             case Data:
@@ -261,9 +264,30 @@ static void hs_process(int socket, hs_server_t *server)
                 // accumulated
                 break;
             case AsyncMaximumMessageSize:
+                debug_printf("Received AsyncMaximumMessageSize message!\n");
+
+                received_SessionID = msg_header.parameter;
+                debug_printf("Received SessionID = %d\n", received_SessionID);
+                // TODO: find session by sessionID
+
+                uint64_t *size_p = (uint64_t *)payload;
+                uint64_t size = ntohll(*size_p);
+                debug_printf("(Server) AsyncMaximumMessageSize message (size = %ld)\n", size);
+                size = ntohll(server->config->message_size_max);
+                msg_create(&message, AsyncMaximumMessageSizeResponse, 0, received_SessionID, 8, &size);
+
+                // Send AsyncMaximumMessageSizeResponse message
+                msg_send(socket, message, timeout);
+                free(message);
+                free(payload);
+
+                debug_printf("Sent AsyncMaximumMessageSizeResponse message\n");
+
                 break;
+
             case AsyncMaximumMessageSizeResponse:
                 break;
+
             case Error:
                 break;
             case FatalError:
