@@ -1,3 +1,8 @@
 build
 *.swp
 .cache
+
+client
+server
+*.pro
+*.pro.user*
