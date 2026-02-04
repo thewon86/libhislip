@@ -97,7 +97,7 @@ static void hs_process(int socket, hs_server_t *server)
         {
             debug_printf("Client closed connection (socket = %d)\n", socket);
             server->tcp_stop(socket);
-            return;
+            goto __exit_hs_process;
         }
 
         // Skip until we have enough bytes representing a message header
@@ -153,7 +153,7 @@ static void hs_process(int socket, hs_server_t *server)
             {
                 debug_printf("Client closed connection\n");
                 server->tcp_stop(socket);
-                return;
+                goto __exit_hs_process;
             }
         }
 
@@ -181,7 +181,7 @@ static void hs_process(int socket, hs_server_t *server)
                     {
                         error_printf("Unsupported protocol version\n");
                         server->tcp_stop(socket);
-                        return;
+                        goto __exit_hs_process;
                     }
                 }
 
@@ -191,7 +191,7 @@ static void hs_process(int socket, hs_server_t *server)
                 {
                     error_printf("Could not allocate new session!\n");
                     server->tcp_stop(socket);
-                    return;
+                    goto __exit_hs_process;
                 }
                 debug_printf("(Server) sessionID = %d\n", sessionID);
 
@@ -318,7 +318,6 @@ static void hs_process(int socket, hs_server_t *server)
                 // Send AsyncMaximumMessageSizeResponse message
                 msg_send(socket, message, timeout);
                 free(message);
-                free(payload);
 
                 debug_printf("Sent AsyncMaximumMessageSizeResponse message\n");
 
@@ -335,6 +334,17 @@ static void hs_process(int socket, hs_server_t *server)
                 error_printf("Unkown message type: %u!!!\n", msg_header.type);
                 break;
         }
+
+        if (payload != NULL) {
+            free(payload);
+                payload = NULL;
+        }
+    }
+
+__exit_hs_process:
+    if (payload != NULL) {
+        free(payload);
+        payload = NULL;
     }
 }
 
