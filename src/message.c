@@ -155,21 +155,16 @@ void msg_destroy(void *message)
 int msg_receive(int socket, void **message, uint64_t payload_size_max, int timeout)
 {
     msg_header_t header;
-    int bytes_read = 0, bytes_left_to_read = 0;
+    int bytes_read = 0;
     char *payload_p = NULL;
 
     // Enter message receive loop
-    bytes_left_to_read = MSG_HEADER_SIZE;
-    while (bytes_left_to_read > 0)
+    // Receive message header (blocking until data available)
+    if ((bytes_read = tcp_read(socket, &header, MSG_HEADER_SIZE, timeout)) <= 0)
     {
-        // Receive message header (blocking until data available)
-        if ((bytes_read = tcp_read(socket, &header, bytes_left_to_read, timeout)) == 0)
-        {
-            debug_printf("Server closed connection (1)\n");
-            tcp_disconnect(socket);
-            return -1;
-        }
-        bytes_left_to_read -= bytes_read;
+        debug_printf("Server closed connection (1)\n");
+        tcp_disconnect(socket);
+        return -1;
     }
 
     // Convert header multi-byte values to host byte order
@@ -228,19 +223,14 @@ int msg_receive(int socket, void **message, uint64_t payload_size_max, int timeo
     if (header.payload_length > 0)
     {
         // Read until payload received
-        bytes_left_to_read = header.payload_length;
         payload_p = *message + MSG_HEADER_SIZE;
 
-        while (bytes_left_to_read > 0)
+        if ((bytes_read = tcp_read(socket, payload_p, header.payload_length, timeout)) <= 0)
         {
-            if ((bytes_read = tcp_read(socket, payload_p, bytes_left_to_read, timeout)) <= 0)
-            {
-                debug_printf("Server closed connection (2)\n");
-                tcp_disconnect(socket);
-                free(*message);
-                return -1;
-            }
-            bytes_left_to_read -= bytes_read;
+            debug_printf("Server closed connection (2)\n");
+            tcp_disconnect(socket);
+            free(*message);
+            return -1;
         }
     }
 

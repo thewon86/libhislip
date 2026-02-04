@@ -101,37 +101,42 @@ int tcp_write(int sd, void *buffer, int length, int timeout)
     int status;
     struct timeval tv;
     fd_set wdfs;
+    ssize_t ret, wr = 0;
 
     // Set timeout
     tv.tv_sec = 0;
     tv.tv_usec = timeout * 1000;
 
-    FD_ZERO(&wdfs);
-    FD_SET(sd, &wdfs);
+    do {
+        FD_ZERO(&wdfs);
+        FD_SET(sd, &wdfs);
+        if (timeout)
+        {
+            status = select(sd + 1, NULL, &wdfs, NULL, &tv);
+        }
+        else
+        {
+            status = select(sd + 1, NULL, &wdfs, NULL, NULL);
+        }
+        if ((status < 0) && (errno == EINTR)) continue;
+        if (status == -1)
+        {
+            return -1;
+        }
+        if (status == 0)
+        {
+            error_printf("Timeout\n");
+            return -1;
+        }
+        ret = write(sd, buffer+wr, length-wr);
+        if ((ret < 0) && (errno == EINTR)) continue;
+        if (ret > 0) {
+            wr += ret;
+            if (length == wr) break;
+        }
+    } while(1);
 
-    if (timeout)
-    {
-        status = select(sd + 1, NULL, &wdfs, NULL, &tv);
-    }
-    else
-    {
-        status = select(sd + 1, NULL, &wdfs, NULL, NULL);
-    }
-
-    if (status == -1)
-    {
-        return -1;
-    }
-    else if (status)
-    {
-        return write(sd, buffer, length); // TODO: Write until exact length done
-    }
-    else
-    {
-        error_printf("Timeout\n");
-    }
-
-    return -1;
+    return wr;
 }
 
 int tcp_read(int sd, void *buffer, int length, int timeout)
@@ -139,37 +144,43 @@ int tcp_read(int sd, void *buffer, int length, int timeout)
     int status;
     struct timeval tv;
     fd_set rdfs;
+    ssize_t ret, rd = 0;
 
     // Set timeout
     tv.tv_sec = 0;
     tv.tv_usec = timeout * 1000;
 
-    FD_ZERO(&rdfs);
-    FD_SET(sd, &rdfs);
+    do {
+        FD_ZERO(&rdfs);
+        FD_SET(sd, &rdfs);
+        if (timeout)
+        {
+            status = select(sd + 1, &rdfs, NULL, NULL, &tv);
+        }
+        else
+        {
+            status = select(sd + 1, &rdfs, NULL, NULL, NULL);
+        }
+        if ((status < 0) && (errno == EINTR)) continue;
+        if (status == -1)
+        {
+            return -1;
+        }
+        if (status == 0)
+        {
+            error_printf("Timeout\n");
+            return -1;
+        }
+        ret = read(sd, buffer+rd, length-rd);
+        if ((ret < 0) && (errno == EINTR)) continue;
+        if (ret == 0) break;
+        if (ret > 0) {
+            rd += ret;
+            if (length == rd) break;
+        }
+    } while(1);
 
-    if (timeout)
-    {
-        status = select(sd + 1, &rdfs, NULL, NULL, &tv);
-    }
-    else
-    {
-        status = select(sd + 1, &rdfs, NULL, NULL, NULL);
-    }
-
-    if (status == -1)
-    {
-        return -1;
-    }
-    else if (status)
-    {
-        return read(sd, buffer, length); // TODO: Read until exact length done
-    }
-    else
-    {
-        error_printf("Timeout\n");
-    }
-
-    return -1;
+    return rd;
 }
 
 int tcp_disconnect(int sd)
