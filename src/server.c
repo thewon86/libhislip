@@ -270,8 +270,9 @@ static void hs_process(int socket, hs_server_t *server)
 
             case AsyncInitializeResponse:
                 break;
-            case Data:
 
+            case Data:
+            {
                 // FIXME: Accumulate payload
                 message_id = msg_header.parameter;
                 debug_printf("Received Data message (message ID = %d)\n", message_id);
@@ -282,12 +283,25 @@ static void hs_process(int socket, hs_server_t *server)
                 {
                     subaddress_data->callbacks->message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
                 }
-
+            }
                 break;
+
             case DataEnd:
+            {
                 // FIXME: Allocate memory for full payload and copy payloads
                 // accumulated
+                message_id = msg_header.parameter;
+                debug_printf("Received Data message (message ID = %d)\n", message_id);
+
+                hs_subaddress_data_t *subaddress_data = server->subaddress_data;
+
+                if (subaddress_data->callbacks->message_sync != NULL)
+                {
+                    subaddress_data->callbacks->message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
+                }
+            }
                 break;
+
             case AsyncMaximumMessageSize:
                 debug_printf("Received AsyncMaximumMessageSize message!\n");
 
