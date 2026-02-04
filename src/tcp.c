@@ -210,6 +210,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
 {
     int server_socket;
     int status;
+    int opt = 1;
     struct sockaddr_in server_address;
     struct sockaddr_in client_address;
     connection_data_t connection_data;
@@ -220,6 +221,9 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
         error_printf("socket() call failed (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 
     // Initialize server address structure
     memset(&server_address, 0, sizeof(server_address));
