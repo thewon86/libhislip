@@ -167,23 +167,15 @@ static void hs_process(int socket, hs_server_t *server)
             int received_SessionID;
 
             case Initialize:
-                {
-                    debug_printf("Received Initialize message!\n");
-                    // Decode parameter field:
-                    //  Client protocol version (upper)
-                    //  Client vendor id (lower)
-                    uint16_t client_vendor_id = msg_header.parameter;
-                    uint16_t client_protocol_version = msg_header.parameter >> 16;
-                    uint16_t server_protocol_version = (HISLIP_VERSION_MAJOR << 8) + HISLIP_VERSION_MINOR;
+                debug_printf("Received Initialize message!\n");
 
-                    // Check if HiSLIP protocol version is supported
-                    if (client_protocol_version != server_protocol_version)
-                    {
-                        error_printf("Unsupported protocol version\n");
-                        server->tcp_stop(socket);
-                        goto __exit_hs_process;
-                    }
-                }
+                // Decode parameter field:
+                //  Client protocol version (upper)
+                //  Client vendor id (lower)
+                uint16_t client_vendor_id = msg_header.parameter;
+                uint16_t client_protocol_version = msg_header.parameter >> 16;
+                uint16_t server_protocol_version = (HISLIP_VERSION_MAJOR << 8) + HISLIP_VERSION_MINOR;
+
 
                 // Create new connection session
                 sessionID = session_new();
@@ -209,7 +201,7 @@ static void hs_process(int socket, hs_server_t *server)
                 //  Overlap-mode (synchronized)
                 //  Server protocol version
                 control_code = CC_PREFER_SYNC;
-                uint16_t version = (HISLIP_VERSION_MAJOR << 8) + HISLIP_VERSION_MINOR;
+                uint16_t version = server_protocol_version < client_protocol_version ? server_protocol_version : client_protocol_version;
                 parameter = (version << 16) + sessionID;
                 msg_create(&message, InitializeResponse, control_code, parameter, 0, NULL);
 
