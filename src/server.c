@@ -279,6 +279,22 @@ static void hs_process(int socket, hs_server_t *server)
             }
                 break;
 
+            case DeviceClearComplete:
+                debug_printf("Received DeviceClearComplete message!\n");
+
+                msg_create(&message, DeviceClearAcknowledge, 0, 0, 0, NULL);
+
+                // Send DeviceClearAcknowledge message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent DeviceClearAcknowledge message\n");
+
+                break;
+
+            case DeviceClearAcknowledge:
+                break;
+
             case AsyncMaximumMessageSize:
                 debug_printf("Received AsyncMaximumMessageSize message!\n");
 
@@ -323,6 +339,22 @@ static void hs_process(int socket, hs_server_t *server)
                 break;
 
             case AsyncInitializeResponse:
+                break;
+
+            case AsyncDeviceClear:
+                debug_printf("Received AsyncDeviceClear message!\n");
+
+                msg_create(&message, AsyncDeviceClearAcknowledge, 0, 0, 0, NULL);
+
+                // Send AsyncDeviceClearAcknowledge message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent AsyncDeviceClearAcknowledge message\n");
+
+                break;
+
+            case AsyncDeviceClearAcknowledge:
                 break;
 
             default:
