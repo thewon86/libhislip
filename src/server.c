@@ -343,6 +343,13 @@ static void hs_process(int socket, hs_server_t *server)
             case AsyncRemoteLocalResponse:
                 break;
 
+            case Trigger:
+                debug_printf("Received Trigger message!\n");
+
+                // TODO: do something
+
+                break;
+
             case AsyncMaximumMessageSize:
                 debug_printf("Received AsyncMaximumMessageSize message!\n");
 
