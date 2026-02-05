@@ -412,6 +412,22 @@ static void hs_process(int socket, hs_server_t *server)
             case AsyncDeviceClearAcknowledge:
                 break;
 
+            case AsyncStatusQuery:
+                debug_printf("Received AsyncStatusQuery message!\n");
+
+                msg_create(&message, AsyncStatusResponse, 0, 0, 0, NULL);
+
+                // Send AsyncStatusResponse message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent AsyncStatusResponse message\n");
+
+                break;
+
+            case AsyncStatusResponse:
+                break;
+
             default:
                 error_printf("Received Unkown message! (type = %u)\n", msg_header.type);
                 break;
