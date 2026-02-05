@@ -213,6 +213,16 @@ static void hs_process(int socket, hs_server_t *server)
 
                 break;
 
+            case InitializeResponse:
+                break;
+
+            case FatalError:
+                debug_printf("FatalError: %.*s\n", msg_header.payload_length, payload);
+                break;
+
+            case Error:
+                break;
+
             case AsyncLock:
                 debug_printf("Received AsyncLock message!\n");
 
@@ -236,31 +246,6 @@ static void hs_process(int socket, hs_server_t *server)
             break;
 
             case AsyncLockResponse:
-                break;
-
-            case InitializeResponse:
-                break;
-
-            case AsyncInitialize:
-                debug_printf("Received AsyncInitialize message!\n");
-
-                received_SessionID = msg_header.parameter;
-                debug_printf("Received SessionID = %d\n", received_SessionID);
-
-                // Construct AsyncInitializeResponse message including
-                //  Server-vendorID
-                parameter = HISLIP_VENDOR_ID;
-                msg_create(&message, AsyncInitializeResponse, 0, parameter, 0, NULL);
-
-                // Send InitializeResponse message
-                msg_send(socket, message, timeout);
-                free(message);
-
-                debug_printf("Sent AsyncInitializeResponse message\n");
-
-                break;
-
-            case AsyncInitializeResponse:
                 break;
 
             case Data:
@@ -318,12 +303,30 @@ static void hs_process(int socket, hs_server_t *server)
             case AsyncMaximumMessageSizeResponse:
                 break;
 
-            case Error:
+            case AsyncInitialize:
+                debug_printf("Received AsyncInitialize message!\n");
+
+                received_SessionID = msg_header.parameter;
+                debug_printf("Received SessionID = %d\n", received_SessionID);
+
+                // Construct AsyncInitializeResponse message including
+                //  Server-vendorID
+                parameter = HISLIP_VENDOR_ID;
+                msg_create(&message, AsyncInitializeResponse, 0, parameter, 0, NULL);
+
+                // Send InitializeResponse message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent AsyncInitializeResponse message\n");
+
                 break;
-            case FatalError:
+
+            case AsyncInitializeResponse:
                 break;
+
             default:
-                error_printf("Unkown message type: %u!!!\n", msg_header.type);
+                error_printf("Received Unkown message! (type = %u)\n", msg_header.type);
                 break;
         }
 
