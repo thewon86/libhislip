@@ -295,6 +295,54 @@ static void hs_process(int socket, hs_server_t *server)
             case DeviceClearAcknowledge:
                 break;
 
+            case AsyncRemoteLocalControl:
+            {
+                debug_printf("Received AsyncRemoteLocalControl message!\n");
+
+                uint8_t rlc = msg_header.control_code;
+#if DEBUG
+                switch (rlc) {
+                case 0:
+                    debug_printf("Disable remote\n");
+                    break;
+                case 1:
+                    debug_printf("Enable remote\n");
+                    break;
+                case 2:
+                    debug_printf("Disable remote and go to local\n");
+                    break;
+                case 3:
+                    debug_printf("Enable remote and go to remote\n");
+                    break;
+                case 4:
+                    debug_printf("Enable remote and lockout local\n");
+                    break;
+                case 5:
+                    debug_printf("Enable remote, go to remote, and set local lockout\n");
+                    break;
+                case 6:
+                    debug_printf("go to local without channging REN or lockout state\n");
+                    break;
+                default:
+                    error_printf("Unkown RemoteLocalControl code\n");
+                    break;
+                }
+#endif \
+    // TODO: send rlc to application
+
+                msg_create(&message, AsyncRemoteLocalResponse, 0, 0, 0, NULL);
+
+                // Send AsyncRemoteLocalResponse message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent AsyncRemoteLocalResponse message\n");
+            }
+            break;
+
+            case AsyncRemoteLocalResponse:
+                break;
+
             case AsyncMaximumMessageSize:
                 debug_printf("Received AsyncMaximumMessageSize message!\n");
 
