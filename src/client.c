@@ -207,16 +207,11 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
     uint8_t control_code;
     uint32_t parameter;
     int socket = session[device].socket_sync;
-    uint64_t message_size_max = session[device].server_message_size_max;
+    uint64_t message_payload_max = session[device].server_message_size_max - MSG_HEADER_SIZE;
     int64_t message_bytes_sent;
 
     // Calculate how many message bytes to send
-    uint64_t message_count = length / (message_size_max - MSG_HEADER_SIZE);
-    uint64_t message_bytes_remaining = message_count * message_size_max;
-    if (length % (message_size_max - MSG_HEADER_SIZE))
-    {
-        message_bytes_remaining = length % (message_size_max - MSG_HEADER_SIZE) + MSG_HEADER_SIZE;
-    }
+    uint64_t message_bytes_remaining = length;
 
     while (message_bytes_remaining)
     {
@@ -227,25 +222,26 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
         // Increment message ID by 2 according to spec
         session[device].message_id = session[device].message_id + 2;
 
-        if (message_bytes_remaining > message_size_max)
+        if (message_bytes_remaining > message_payload_max)
         {
-            msg_create(&message, Data, control_code, parameter, length, data);
+            msg_create(&message, Data, control_code, parameter, message_payload_max, data);
             debug_printf("Sending Data message (message ID = %d)\n", parameter);
         }
         else
         {
-            msg_create(&message, DataEnd, control_code, parameter, length, data);
+            msg_create(&message, DataEnd, control_code, parameter, message_bytes_remaining, data);
             debug_printf("Sending DataEnd message (message ID = %d)\n", parameter);
         }
 
         message_bytes_sent = msg_send(socket, message, timeout);
+        free(message);
         if (message_bytes_sent < 0)
         {
             // Throw fatal error
             // return -1;
         }
 
-        message_bytes_remaining -= message_bytes_sent;
+        message_bytes_remaining -= (message_bytes_sent - MSG_HEADER_SIZE);
     }
 
     return length;
@@ -257,26 +253,41 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
     void *message = NULL;
     int socket = session[device].socket_sync;
     char *payload_p;
-    uint64_t payload_length;
+    uint64_t payload_length, message_bytes_recv = 0, message_bytes_remaining = length;
 
     // Receive loop - receive Data messages and accumulate payload until DataEnd
     // message is received.
     while (1)
     {
         // Wait for message
-        if (msg_receive(socket, &message, length, timeout) == -1)
+        if (msg_receive(socket, &message, message_bytes_remaining, timeout) == -1)
         {
             return -1;
         }
         header = message;
 
         // Push payload on FIFO
+        payload_p = message;
+        payload_p += MSG_HEADER_SIZE;
+        payload_length = header->payload_length;
+        message_bytes_recv += payload_length;
+        message_bytes_remaining -= payload_length;
+
+        if (message_bytes_recv > length)
+        {
+            free(message);
+            return 0;
+        }
+
+        memcpy(data+message_bytes_recv, payload_p, payload_length);
 
         if (header->type == DataEnd)
         {
             debug_printf("Received DataEnd message (message ID = %d)\n", header->parameter);
+            free(message);
             break;
         }
+        free(message);
     }
 
     // Reconstruct full payload from partial payloads in FIFO
@@ -290,21 +301,7 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
     //     return -1;
     // }
 
-    payload_p = message;
-    payload_p += MSG_HEADER_SIZE;
-    payload_length = header->payload_length;
-
-    if (payload_length > length)
-    {
-        free(message);
-        return 0;
-    }
-
-    memcpy(data, payload_p, payload_length);
-
-    free(message);
-
-    return payload_length;
+    return message_bytes_recv;
 }
 
 EXPORT uint64_t hs_sync_send_receive(hs_device_t device, void *data, uint64_t length, int timeout,
