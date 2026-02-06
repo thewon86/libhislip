@@ -44,7 +44,7 @@ typedef struct
 typedef struct hs_subaddress_data_t
 {
     char *subaddress;
-    hs_subaddress_callbacks_t *callbacks;
+    hs_subaddress_callbacks_t callbacks;
     LIST_ENTRY(hs_subaddress_data_t) entries;
 
 } hs_subaddress_data_t;
@@ -65,14 +65,14 @@ typedef struct
     int (*tcp_write)(int socket, void *buffer, int length, int timeout);
     int (*tcp_stop)(int socket);
 
-    hs_server_config_t *config;
+    hs_server_config_t config;
     hs_subaddress_data_t *subaddress_data;
 
 } hs_server_t;
 
 /* Server API */
 int hs_server_config_init(hs_server_config_t *config);
-int hs_server_init(hs_server_t *server, hs_server_config_t *config);
-int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t *callbacks);
+int hs_server_init(hs_server_t *server, hs_server_config_t config);
+int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t callbacks);
 int hs_server_run(hs_server_t *server);
 int hs_server_send_response(int socket, uint32_t message_id, void *data, int length, int timeout);

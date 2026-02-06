@@ -94,7 +94,7 @@ static void hs_process(int socket, hs_server_t *server)
     msg_header_t msg_header;
     int bytes_read, sessionID = -1;
     void *payload = NULL;
-    int timeout = server->config->message_timeout;
+    int timeout = server->config.message_timeout;
 
     // Enter message processing loop
     while (1)
@@ -151,7 +151,7 @@ static void hs_process(int socket, hs_server_t *server)
         if (msg_header.payload_length > 0)
         {
             // Check payload size
-            if (msg_header.payload_length > (server->config->message_size_max - MSG_HEADER_SIZE))
+            if (msg_header.payload_length > (server->config.message_size_max - MSG_HEADER_SIZE))
             {
                 error_printf("Maximum message size exceeded\n");
                 continue;
@@ -166,7 +166,7 @@ static void hs_process(int socket, hs_server_t *server)
             }
 
             // Read payload
-            if ((bytes_read = server->tcp_read(socket, payload, msg_header.payload_length, server->config->message_timeout)) <= 0)
+            if ((bytes_read = server->tcp_read(socket, payload, msg_header.payload_length, server->config.message_timeout)) <= 0)
             {
                 debug_printf("Client closed connection\n");
                 server->tcp_stop(socket);
@@ -224,7 +224,7 @@ static void hs_process(int socket, hs_server_t *server)
                 session[sessionID].socket_sync = socket;
                 session[sessionID].client_vendor_id = client_vendor_id;
                 session[sessionID].client_protocol_version = client_protocol_version;
-                session[sessionID].server_message_size_max = server->config->message_size_max;
+                session[sessionID].server_message_size_max = server->config.message_size_max;
 
                 // Construct InitializeResponse message including
                 //  Session ID
@@ -286,9 +286,9 @@ static void hs_process(int socket, hs_server_t *server)
 
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
-                if (subaddress_data->callbacks->message_sync != NULL)
+                if (subaddress_data->callbacks.message_sync != NULL)
                 {
-                    subaddress_data->callbacks->message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
+                    subaddress_data->callbacks.message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
                 }
             }
                 break;
@@ -302,9 +302,9 @@ static void hs_process(int socket, hs_server_t *server)
 
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
-                if (subaddress_data->callbacks->message_sync != NULL)
+                if (subaddress_data->callbacks.message_sync != NULL)
                 {
-                    subaddress_data->callbacks->message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
+                    subaddress_data->callbacks.message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
                 }
             }
                 break;
@@ -501,7 +501,7 @@ EXPORT int hs_server_run(hs_server_t *server)
 {
     // Start server
     debug_printf("Starting HiSLIP server. Ver:%d.%d\n", HISLIP_VERSION_MAJOR, HISLIP_VERSION_MINOR);
-    server->tcp_start(server->config->port, server->config->connections_max, connection_callback, server);
+    server->tcp_start(server->config.port, server->config.connections_max, connection_callback, server);
 
     return 0;
 }
@@ -517,9 +517,9 @@ EXPORT int hs_server_config_init(hs_server_config_t *config)
     return 0;
 }
 
-EXPORT int hs_server_init(hs_server_t *server, hs_server_config_t *config)
+EXPORT int hs_server_init(hs_server_t *server, hs_server_config_t config)
 {
-    if (config->message_size_max < MSG_HEADER_SIZE)
+    if (config.message_size_max < MSG_HEADER_SIZE)
     {
         error_printf("Maximum message size must be larger than %d\n", MSG_HEADER_SIZE);
         return -1;
@@ -544,7 +544,7 @@ EXPORT int hs_server_init(hs_server_t *server, hs_server_config_t *config)
     return 0;
 }
 
-EXPORT int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t *callbacks)
+EXPORT int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t callbacks)
 {
     // Add subaddres to list of registered subaddresses
     hs_subaddress_data_t *subaddress_data = malloc(sizeof(hs_subaddress_data_t));
