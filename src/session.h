@@ -44,10 +44,10 @@ typedef struct
     int socket_sync;
     int socket_async;
     uint16_t SessionID;
-    // uint16_t client_protocol_version;
+    uint16_t client_protocol_version;
     // uint16_t server_protocol_version;
     // uint16_t active_protocol_version;
-    // uint16_t client_vendor_id;
+    uint16_t client_vendor_id;
     // uint16_t server_vendor_id;
     uint32_t message_id;
     uint64_t client_message_size_max;

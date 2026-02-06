@@ -48,6 +48,7 @@
 
 typedef LIST_HEAD(subaddress_head_t, hs_subaddress_data_t) subaddress_head_t;
 subaddress_head_t *subaddress_head;
+hs_subaddress_data_t *subaddress_default = NULL;
 
 static int server_subaddress_link(hs_server_t *server, char *subaddress, hs_subaddress_data_t *subaddress_data)
 {
@@ -71,11 +72,27 @@ static int server_subaddress_link(hs_server_t *server, char *subaddress, hs_suba
     return match_found;
 }
 
+static hs_subaddress_data_t *find_subaddress_data(char *subaddress)
+{
+    hs_subaddress_data_t *sd;
+
+    // Lookup subaddress in list of registered subaddresses
+    LIST_FOREACH(sd, subaddress_head, entries)
+    {
+        if (strcmp(sd->subaddress, subaddress) == 0)
+        {
+            debug_printf("Found subaddress\n");
+            break;
+        }
+    }
+
+    return sd;
+}
+
 static void hs_process(int socket, hs_server_t *server)
 {
     msg_header_t msg_header;
-    int bytes_read, sessionID;
-    char *subaddress;
+    int bytes_read, sessionID = -1;
     void *payload = NULL;
     int timeout = server->config->message_timeout;
 
@@ -160,13 +177,13 @@ static void hs_process(int socket, hs_server_t *server)
         // Perform action depending on message type
         switch (msg_header.type)
         {
-            void *message = NULL;
+            void *message;
             uint8_t control_code;;
             uint32_t parameter;
             uint32_t message_id;
-            int received_SessionID;
 
             case Initialize:
+            {
                 debug_printf("Received Initialize message!\n");
 
                 // Decode parameter field:
@@ -175,7 +192,6 @@ static void hs_process(int socket, hs_server_t *server)
                 uint16_t client_vendor_id = msg_header.parameter;
                 uint16_t client_protocol_version = msg_header.parameter >> 16;
                 uint16_t server_protocol_version = (HISLIP_VERSION_MAJOR << 8) + HISLIP_VERSION_MINOR;
-
 
                 // Create new connection session
                 sessionID = session_new();
@@ -188,13 +204,27 @@ static void hs_process(int socket, hs_server_t *server)
                 debug_printf("(Server) sessionID = %d\n", sessionID);
 
                 // Link connection session with registered subaddress callbacks
-                subaddress = payload;
-                if (server_subaddress_link(server, subaddress, session[sessionID].subaddress_data) == -1)
-                {
-                    error_printf("Unable to link subaddress\n");
-                    // TODO: Respond FatalError
-                    continue;
+                if (payload == NULL) {
+                    session[sessionID].subaddress_data = subaddress_default;
+                } else {
+                    hs_subaddress_data_t *sd;
+                    char *subaddress;
+                    subaddress = payload;
+                    sd = find_subaddress_data(subaddress);
+                    if (sd != NULL) {
+                        session[sessionID].subaddress_data = sd;
+                    } else {
+                        error_printf("Unable to find subaddress\n");
+                        // TODO: Respond FatalError
+                        server->tcp_stop(socket);
+                        goto __exit_hs_process;
+                    }
                 }
+
+                session[sessionID].socket_sync = socket;
+                session[sessionID].client_vendor_id = client_vendor_id;
+                session[sessionID].client_protocol_version = client_protocol_version;
+                session[sessionID].server_message_size_max = server->config->message_size_max;
 
                 // Construct InitializeResponse message including
                 //  Session ID
@@ -210,7 +240,7 @@ static void hs_process(int socket, hs_server_t *server)
                 free(message);
 
                 debug_printf("Sent InitializeResponse message\n");
-
+            }
                 break;
 
             case InitializeResponse:
@@ -226,8 +256,8 @@ static void hs_process(int socket, hs_server_t *server)
             case AsyncLock:
                 debug_printf("Received AsyncLock message!\n");
 
-                received_SessionID = msg_header.parameter;
-                debug_printf("Received SessionID = %d\n", received_SessionID);
+                sessionID = msg_header.parameter;
+                debug_printf("Received SessionID = %d\n", sessionID);
 
                 if (msg_header.control_code == CC_REQUEST) {
                     control_code = CC_REQUEST_RSP_SUCCESS;
@@ -254,7 +284,7 @@ static void hs_process(int socket, hs_server_t *server)
                 message_id = msg_header.parameter;
                 debug_printf("Received Data message (message ID = %d)\n", message_id);
 
-                hs_subaddress_data_t *subaddress_data = server->subaddress_data;
+                hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
                 if (subaddress_data->callbacks->message_sync != NULL)
                 {
@@ -268,9 +298,9 @@ static void hs_process(int socket, hs_server_t *server)
                 // FIXME: Allocate memory for full payload and copy payloads
                 // accumulated
                 message_id = msg_header.parameter;
-                debug_printf("Received Data message (message ID = %d)\n", message_id);
+                debug_printf("Received DataEnd message (message ID = %d)\n", message_id);
 
-                hs_subaddress_data_t *subaddress_data = server->subaddress_data;
+                hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
                 if (subaddress_data->callbacks->message_sync != NULL)
                 {
@@ -351,34 +381,39 @@ static void hs_process(int socket, hs_server_t *server)
                 break;
 
             case AsyncMaximumMessageSize:
+            {
                 debug_printf("Received AsyncMaximumMessageSize message!\n");
 
-                received_SessionID = msg_header.parameter;
-                debug_printf("Received SessionID = %d\n", received_SessionID);
-                // TODO: find session by sessionID
+                debug_printf("Received SessionID = %d\n", sessionID);
 
                 uint64_t *size_p = (uint64_t *)payload;
                 uint64_t size = ntohll(*size_p);
-                debug_printf("(Server) AsyncMaximumMessageSize message (size = %ld)\n", size);
-                size = ntohll(server->config->message_size_max);
-                msg_create(&message, AsyncMaximumMessageSizeResponse, 0, received_SessionID, 8, &size);
+
+                debug_printf("(Client) AsyncMaximumMessageSize message (size = %ld)\n", size);
+                session[sessionID].client_message_size_max = size;
+
+                debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %ld)\n", session[sessionID].server_message_size_max);
+                size = ntohll(session[sessionID].server_message_size_max);
+                msg_create(&message, AsyncMaximumMessageSizeResponse, 0, 0, 8, &size);
 
                 // Send AsyncMaximumMessageSizeResponse message
                 msg_send(socket, message, timeout);
                 free(message);
 
                 debug_printf("Sent AsyncMaximumMessageSizeResponse message\n");
-
+            }
                 break;
 
             case AsyncMaximumMessageSizeResponse:
                 break;
 
             case AsyncInitialize:
+            {
                 debug_printf("Received AsyncInitialize message!\n");
 
-                received_SessionID = msg_header.parameter;
-                debug_printf("Received SessionID = %d\n", received_SessionID);
+                sessionID = msg_header.parameter;
+                debug_printf("Received SessionID = %d\n", sessionID);
+                session[sessionID].socket_async = socket;
 
                 // Construct AsyncInitializeResponse message including
                 //  Server-vendorID
@@ -390,7 +425,7 @@ static void hs_process(int socket, hs_server_t *server)
                 free(message);
 
                 debug_printf("Sent AsyncInitializeResponse message\n");
-
+            }
                 break;
 
             case AsyncInitializeResponse:
@@ -443,6 +478,15 @@ __exit_hs_process:
     if (payload != NULL) {
         free(payload);
         payload = NULL;
+    }
+
+    if (sessionID != -1) {
+        if (socket == session[sessionID].socket_sync) session[sessionID].socket_sync = -1;
+        if (socket == session[sessionID].socket_async) session[sessionID].socket_async = -1;
+        if ((session[sessionID].socket_sync == -1)
+         && (session[sessionID].socket_async == -1)) {
+            session_free(sessionID);
+        }
     }
 }
 
@@ -503,19 +547,23 @@ EXPORT int hs_server_init(hs_server_t *server, hs_server_config_t *config)
 EXPORT int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t *callbacks)
 {
     // Add subaddres to list of registered subaddresses
-    server->subaddress_data = malloc(sizeof(hs_subaddress_data_t));
-    if (server->subaddress_data == NULL)
+    hs_subaddress_data_t *subaddress_data = malloc(sizeof(hs_subaddress_data_t));
+    if (subaddress_data == NULL)
     {
         error_printf("Could not allocated space for new subaddress\n");
         return -1;
     }
 
     // Install subaddress data
-    server->subaddress_data->callbacks = callbacks;
-    server->subaddress_data->subaddress = subaddress;
+    subaddress_data->callbacks = callbacks;
+    subaddress_data->subaddress = subaddress;
 
     // Add to list
-    LIST_INSERT_HEAD(subaddress_head, server->subaddress_data, entries);
+    LIST_INSERT_HEAD(subaddress_head, subaddress_data, entries);
+
+    if (subaddress_default == NULL) {
+        subaddress_default = subaddress_data;
+    }
 
     return 0;
 }
