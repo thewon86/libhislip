@@ -193,6 +193,7 @@ static void *connection_thread(void *arg)
     // Call connection callback
     connection_data_t *connection_data = arg;
     connection_data->connection_callback(connection_data->sd, connection_data->data);
+    free(connection_data);
 
     return 0;
 }
@@ -213,7 +214,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
     int opt = 1;
     struct sockaddr_in server_address;
     struct sockaddr_in client_address;
-    connection_data_t connection_data;
+    connection_data_t *connection_data;
 
     // Create a reliable stream socket using TCP/IP
     if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -267,12 +268,17 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
         debug_printf("Incoming connection from client (%s)\n", inet_ntoa(client_address.sin_addr));
 
         // Prepare connection data
-        connection_data.sd = client_socket;
-        connection_data.data = data;
-        connection_data.connection_callback = connection_callback;
+        connection_data = (connection_data_t*)malloc(sizeof(connection_data_t));
+        if (connection_data == NULL)
+        {
+            error_printf("malloc() failed\n");
+        }
+        connection_data->sd = client_socket;
+        connection_data->data = data;
+        connection_data->connection_callback = connection_callback;
 
         // Create connection thread
-        pthread_create(&thread, NULL, connection_thread, &connection_data);
+        pthread_create(&thread, NULL, connection_thread, connection_data);
 
         // Make sure connection thread does its own cleanup upon termination
         pthread_detach(thread);
