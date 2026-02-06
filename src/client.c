@@ -270,16 +270,16 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
         payload_p = message;
         payload_p += MSG_HEADER_SIZE;
         payload_length = header->payload_length;
-        message_bytes_recv += payload_length;
-        message_bytes_remaining -= payload_length;
 
-        if (message_bytes_recv > length)
+        if (payload_length > message_bytes_remaining)
         {
             free(message);
             return 0;
         }
 
         memcpy(data+message_bytes_recv, payload_p, payload_length);
+        message_bytes_remaining -= payload_length;
+        message_bytes_recv += payload_length;
 
         if (header->type == DataEnd)
         {
