@@ -272,7 +272,7 @@ static void hs_process(int socket, hs_server_t *server)
                         server->asyncLock |= 2;
                     }
                 } else if (msg_header.control_code == CC_RELEASE) {
-                    if (server->asyncLock & 0x1 == 1) {
+                    if ((server->asyncLock & 0x1) == 1) {
                         control_code = CC_RELEASE_RSP_SUCCESS_EXCLUSIVE;
                         server->asyncLockCnt--;
                         if (server->asyncLockCnt == 0) {
@@ -313,7 +313,7 @@ static void hs_process(int socket, hs_server_t *server)
                     payload_accumulated_size = 0;
                     if (session[sessionID].data != NULL) {
                         free(session[sessionID].data);
-                        session[sessionID].data == NULL;
+                        session[sessionID].data = NULL;
                     }
                     // TODO: respond error?
                     break;
@@ -342,7 +342,7 @@ static void hs_process(int socket, hs_server_t *server)
                     payload_accumulated_size = 0;
                     if (session[sessionID].data != NULL) {
                         free(session[sessionID].data);
-                        session[sessionID].data == NULL;
+                        session[sessionID].data = NULL;
                     }
                     // TODO: respond error?
                     break;
@@ -360,7 +360,7 @@ static void hs_process(int socket, hs_server_t *server)
                 }
                 payload_accumulated_size = 0;
                 free(session[sessionID].data);
-                session[sessionID].data == NULL;
+                session[sessionID].data = NULL;
             }
                 break;
 
@@ -565,7 +565,7 @@ __exit_hs_process:
          && (session[sessionID].socket_async == -1)) {
             if (payload_accumulated_size != 0) {
                 free(session[sessionID].data);
-                session[sessionID].data == NULL;
+                session[sessionID].data = NULL;
             }
             session_free(sessionID);
         }
