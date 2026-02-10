@@ -518,6 +518,29 @@ static void hs_process(int socket, hs_server_t *server)
             case AsyncStatusResponse:
                 break;
 
+            case AsyncLockInfo:
+                debug_printf("Received AsyncLockInfo message!\n");
+
+                if (server->asyncLockCnt == 0) {
+                    control_code = 0;
+                } else {
+                    control_code = 1;
+                }
+                parameter = server->asyncLockCnt;
+
+                msg_create(&message, AsyncLockInfoResponse, control_code, parameter, 0, NULL);
+
+                // Send AsyncStatusResponse message
+                msg_send(socket, message, timeout);
+                free(message);
+
+                debug_printf("Sent AsyncLockInfoResponse message\n");
+
+                break;
+
+            case AsyncLockInfoResponse:
+                break;
+
             default:
                 error_printf("Received Unkown message! (type = %u)\n", msg_header.type);
                 break;
