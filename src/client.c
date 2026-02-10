@@ -213,10 +213,10 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
     // Calculate how many message bytes to send
     uint64_t message_bytes_remaining = length;
 
+    control_code = CC_RMT_DELIVERED;
     while (message_bytes_remaining)
     {
         // Create Data message
-        control_code = CC_RMT_NOT_DELIVERED;
         parameter = session[device].message_id;
 
         // Increment message ID by 2 according to spec
@@ -242,6 +242,8 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
         }
 
         message_bytes_remaining -= (message_bytes_sent - MSG_HEADER_SIZE);
+
+        control_code = CC_RMT_NOT_DELIVERED;
     }
 
     return length;
@@ -273,12 +275,14 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
 
         if (payload_length > message_bytes_remaining)
         {
-            free(message);
-            return 0;
+            if (message_bytes_remaining > 0) {
+                memcpy(data+message_bytes_recv, payload_p, message_bytes_remaining);
+            }
+        } else {
+            memcpy(data+message_bytes_recv, payload_p, payload_length);
+            message_bytes_remaining -= payload_length;
         }
 
-        memcpy(data+message_bytes_recv, payload_p, payload_length);
-        message_bytes_remaining -= payload_length;
         message_bytes_recv += payload_length;
 
         if (header->type == DataEnd)
@@ -287,19 +291,9 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
             free(message);
             break;
         }
+        debug_printf("Received Data message (message ID = %d)\n", header->parameter);
         free(message);
     }
-
-    // Reconstruct full payload from partial payloads in FIFO
-
-
-    // FIXME: What to expect here?
-    // if (header->control_code != RMT_DELIVERED)
-    // {
-    //     error_printf("Data was not delievered\n");
-    //     free(message);
-    //     return -1;
-    // }
 
     return message_bytes_recv;
 }
