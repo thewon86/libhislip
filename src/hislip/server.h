@@ -68,6 +68,7 @@ typedef struct
     hs_server_config_t config;
     hs_subaddress_data_t *subaddress_data;
 
+    uint32_t asyncLock, asyncLockCnt;
 } hs_server_t;
 
 /* Server API */

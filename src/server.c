@@ -262,8 +262,26 @@ static void hs_process(int socket, hs_server_t *server)
 
                 if (msg_header.control_code == CC_REQUEST) {
                     control_code = CC_REQUEST_RSP_SUCCESS;
+
+                    if (msg_header.payload_length == 0) {
+                        // TODO: Exclusive
+                        server->asyncLock |= 1;
+                        server->asyncLockCnt++;
+                    } else {
+                        // TODO: Shared
+                        server->asyncLock |= 2;
+                    }
                 } else if (msg_header.control_code == CC_RELEASE) {
-                    control_code = CC_RELEASE_RSP_SUCCESS_SHARED;
+                    if (server->asyncLock & 0x1 == 1) {
+                        control_code = CC_RELEASE_RSP_SUCCESS_EXCLUSIVE;
+                        server->asyncLockCnt--;
+                        if (server->asyncLockCnt == 0) {
+                            server->asyncLock &= ~0x1;
+                        }
+                    } else {
+                        control_code = CC_RELEASE_RSP_SUCCESS_SHARED;
+                        server->asyncLock &= ~0x2;
+                    }
                 } else {
                     control_code = CC_REQUEST_RSP_SUCCESS;
                 }
@@ -581,6 +599,9 @@ EXPORT int hs_server_init(hs_server_t *server, hs_server_config_t config)
     server->tcp_read = tcp_read;
     server->tcp_write = tcp_write;
     server->tcp_stop = tcp_disconnect;
+
+    server->asyncLock = 0;
+    server->asyncLockCnt = 0;
 
     return 0;
 }
