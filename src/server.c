@@ -94,6 +94,7 @@ static void hs_process(int socket, hs_server_t *server)
     msg_header_t msg_header;
     int bytes_read, sessionID = -1;
     void *payload = NULL;
+    int payload_accumulated_size = 0;
     int timeout = server->config.message_timeout;
 
     // Enter message processing loop
@@ -280,32 +281,68 @@ static void hs_process(int socket, hs_server_t *server)
 
             case Data:
             {
+                char *data;
                 // FIXME: Accumulate payload
                 message_id = msg_header.parameter;
                 debug_printf("Received Data message (message ID = %d)\n", message_id);
 
-                hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
-
-                if (subaddress_data->callbacks.message_sync != NULL)
-                {
-                    subaddress_data->callbacks.message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
+                if (payload_accumulated_size == 0) {
+                    data = malloc(msg_header.payload_length);
+                } else {
+                    data = realloc(session[sessionID].data, payload_accumulated_size + msg_header.payload_length);
                 }
+                if (data == NULL) {
+                    payload_accumulated_size = 0;
+                    if (session[sessionID].data != NULL) {
+                        free(session[sessionID].data);
+                        session[sessionID].data == NULL;
+                    }
+                    // TODO: respond error?
+                    break;
+                }
+                session[sessionID].data = data;
+
+                memcpy(session[sessionID].data+payload_accumulated_size, payload, msg_header.payload_length);
+                payload_accumulated_size += msg_header.payload_length;
             }
                 break;
 
             case DataEnd:
             {
+                char *data;
                 // FIXME: Allocate memory for full payload and copy payloads
                 // accumulated
                 message_id = msg_header.parameter;
                 debug_printf("Received DataEnd message (message ID = %d)\n", message_id);
 
+                if (payload_accumulated_size == 0) {
+                    data = malloc(msg_header.payload_length);
+                } else {
+                    data = realloc(session[sessionID].data, payload_accumulated_size + msg_header.payload_length);
+                }
+                if (data == NULL) {
+                    payload_accumulated_size = 0;
+                    if (session[sessionID].data != NULL) {
+                        free(session[sessionID].data);
+                        session[sessionID].data == NULL;
+                    }
+                    // TODO: respond error?
+                    break;
+                }
+                session[sessionID].data = data;
+
+                memcpy(session[sessionID].data+payload_accumulated_size, payload, msg_header.payload_length);
+                payload_accumulated_size += msg_header.payload_length;
+
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
                 if (subaddress_data->callbacks.message_sync != NULL)
                 {
-                    subaddress_data->callbacks.message_sync(socket, message_id, payload, msg_header.payload_length, timeout);
+                    subaddress_data->callbacks.message_sync(socket, sessionID, message_id, session[sessionID].data, payload_accumulated_size, timeout);
                 }
+                payload_accumulated_size = 0;
+                free(session[sessionID].data);
+                session[sessionID].data == NULL;
             }
                 break;
 
@@ -485,6 +522,10 @@ __exit_hs_process:
         if (socket == session[sessionID].socket_async) session[sessionID].socket_async = -1;
         if ((session[sessionID].socket_sync == -1)
          && (session[sessionID].socket_async == -1)) {
+            if (payload_accumulated_size != 0) {
+                free(session[sessionID].data);
+                session[sessionID].data == NULL;
+            }
             session_free(sessionID);
         }
     }
@@ -568,18 +609,57 @@ EXPORT int hs_server_register_subaddress(hs_server_t *server, char *subaddress, 
     return 0;
 }
 
-EXPORT int hs_server_send_response(int socket, uint32_t message_id, void *data, int length, int timeout)
+EXPORT int hs_server_send_response(int socket, int sessionID, uint32_t message_id, void *data, int length, int timeout)
 {
     // Create DataEnd response message
     void *message = NULL;
+    uint8_t control_code;
+    uint64_t message_payload_max;
+    int64_t message_bytes_sent;
 
-    msg_create(&message, DataEnd, CC_RMT_DELIVERED, message_id, length, data);
+    message_payload_max = session[sessionID].client_message_size_max - MSG_HEADER_SIZE;
 
-    // Send DataEnd response message
-    msg_send(socket, message, timeout);
-    free(message);
+    // Calculate how many message bytes to send
+    uint64_t message_bytes_remaining = length;
 
-    debug_printf("Sent DataEnd response message (message ID = %d)\n", message_id);
+    debug_printf("Sending message length: %d; max: %d\n", message_bytes_remaining, message_payload_max);
+    control_code = CC_RMT_DELIVERED;
+    while (message_bytes_remaining)
+    {
+        // Create Data message
+        control_code = CC_RMT_NOT_DELIVERED;
 
-    return 0;
+        if (message_bytes_remaining > message_payload_max)
+        {
+            msg_create(&message, Data, control_code, message_id, message_payload_max, data);
+            debug_printf("Sending Data message (message ID = %d)\n", message_id);
+        }
+        else
+        {
+            msg_create(&message, DataEnd, control_code, message_id, message_bytes_remaining, data);
+            debug_printf("Sending DataEnd message (message ID = %d)\n", message_id);
+        }
+
+        message_bytes_sent = msg_send(socket, message, timeout);
+        free(message);
+        if (message_bytes_sent < 0)
+        {
+            // Throw fatal error
+            // return -1;
+        }
+
+        message_bytes_remaining -= (message_bytes_sent - MSG_HEADER_SIZE);
+
+        control_code = CC_RMT_NOT_DELIVERED;
+    }
+
+//    msg_create(&message, DataEnd, CC_RMT_DELIVERED, message_id, length, data);
+
+//    // Send DataEnd response message
+//    msg_send(socket, message, timeout);
+//    free(message);
+
+//    debug_printf("Sent DataEnd response message (message ID = %d)\n", message_id);
+
+    return length;
 }

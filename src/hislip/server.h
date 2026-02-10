@@ -36,7 +36,7 @@
 
 typedef struct
 {
-    int (*message_sync)(int socket, uint32_t message_id, void *buffer, int length, int timeout);
+    int (*message_sync)(int socket, int sessionID, uint32_t message_id, void *buffer, int length, int timeout);
     int (*message_async)(int socket, uint32_t message_id, void *buffer, int length, int timeout);
 
 } hs_subaddress_callbacks_t;
@@ -75,4 +75,4 @@ int hs_server_config_init(hs_server_config_t *config);
 int hs_server_init(hs_server_t *server, hs_server_config_t config);
 int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t callbacks);
 int hs_server_run(hs_server_t *server);
-int hs_server_send_response(int socket, uint32_t message_id, void *data, int length, int timeout);
+int hs_server_send_response(int socket, int sessionID, uint32_t message_id, void *data, int length, int timeout);
