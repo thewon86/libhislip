@@ -33,6 +33,7 @@ API.
 #include <hislip/server.h>
 
 int hislip0_message_sync(int socket,
+                         int sessionID,
                          uint32_t message_id,
                          void *buffer,
                          int length,
@@ -58,6 +59,7 @@ int hislip0_message_sync(int socket,
     }
 
     return hs_server_send_response(socket,
+                                   sessionID,
                                    message_id,
                                    response_buffer,
                                    response_length,
@@ -89,12 +91,12 @@ int main(void)
     config.message_timeout = 2000; // 2 seconds
 
     // Initialize server
-    hs_server_init(&server, &config);
+    hs_server_init(&server, config);
 
     // Register server message handlers
     hislip0_callbacks.message_sync = hislip0_message_sync;
     hislip0_callbacks.message_async = hislip0_message_async;
-    hs_server_register_subaddress(&server, "hislip0", &hislip0_callbacks);
+    hs_server_register_subaddress(&server, "hislip0", hislip0_callbacks);
 
     // Start server
     status = hs_server_run(&server);
