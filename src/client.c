@@ -262,7 +262,7 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
     while (1)
     {
         // Wait for message
-        if (msg_receive(socket, &message, message_bytes_remaining, timeout) == -1)
+        if (msg_receive(socket, &message, session[device].client_message_size_max, timeout) == -1)
         {
             return -1;
         }
@@ -273,14 +273,15 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
         payload_p += MSG_HEADER_SIZE;
         payload_length = header->payload_length;
 
-        if (payload_length > message_bytes_remaining)
-        {
-            if (message_bytes_remaining > 0) {
+        if (message_bytes_remaining > 0) {
+            if (payload_length > message_bytes_remaining)
+            {
                 memcpy(data+message_bytes_recv, payload_p, message_bytes_remaining);
+                message_bytes_remaining = 0;
+            } else {
+                memcpy(data+message_bytes_recv, payload_p, payload_length);
+                message_bytes_remaining -= payload_length;
             }
-        } else {
-            memcpy(data+message_bytes_recv, payload_p, payload_length);
-            message_bytes_remaining -= payload_length;
         }
 
         message_bytes_recv += payload_length;
