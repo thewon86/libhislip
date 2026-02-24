@@ -33,7 +33,7 @@
 #include "config.h"
 
 #define error_printf(format, args...) \
-    fprintf(stderr, "[Error] " format, ## args)
+    fprintf(stderr, "[Error] <%s::%d> " format, __FILE__, __LINE__, ## args)
 
 #if DEBUG
 #define debug_printf(format, args...) \
