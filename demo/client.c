@@ -4,7 +4,7 @@
 #include <string.h>
 #include <hislip/client.h>
 
-static char resp_buffer[1024 * 1024];
+static char *resp_buffer;
 
 static void receive_handler(void *buffer, int length)
 {
@@ -14,7 +14,7 @@ static void receive_handler(void *buffer, int length)
 int main(void)
 {
     hs_device_t hislip0;
-    uint64_t ret;
+    uint64_t ret, room;
 
     // Connect to HiSLIP device
     hislip0 = hs_connect("127.0.0.1", HISLIP_PORT, "hislip0", 1000);
@@ -35,8 +35,28 @@ int main(void)
     hs_sync_send(hislip0, buffer, strlen(buffer), 1000);
 
     // Receive response message
-    ret = hs_sync_receive(hislip0, resp_buffer, sizeof(resp_buffer), 1000);
-    resp_buffer[ret] = '\0';
+    ret = hs_sync_receive(hislip0, buffer, sizeof(buffer), 1000);
+    buffer[ret] = '\0';
+    printf("Received = %d %s\n", ret, buffer);
+
+    // Send SCPI command on sync channel
+    strcpy(buffer, "MMEM:DATA?\n");
+    hs_sync_send(hislip0, buffer, strlen(buffer), 1000);
+
+    room = 2 * 1024;
+    resp_buffer = malloc(room);
+    // Receive response message
+    ret = hs_sync_receive(hislip0, resp_buffer, room, 3000);
+    printf("Received = %d\n", ret);
+    if (ret > room) {
+        free(resp_buffer);
+        room = ret;
+        resp_buffer = malloc(room);
+        if (resp_buffer != NULL) {
+            hs_sync_send(hislip0, buffer, strlen(buffer), 1000);
+            ret = hs_sync_receive(hislip0, resp_buffer, room, 1000);
+        }
+    }
     printf("Received = %d %.*s\n", ret, ret, resp_buffer);
 
     // Send SCPI command on sync channel

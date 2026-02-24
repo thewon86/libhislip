@@ -1,9 +1,16 @@
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <hislip/server.h>
 
-int hislip0_message_sync(int socket, int sessionID, uint32_t message_id, void *buffer, int length, int timeout)
+void *sync_data = NULL;
+int payload_accumulated_size = 0;
+
+int hislip0_message_sync(hs_msg_ctx_t *msg_ctx, void *buffer, int length, bool end)
 {
+    char *data;
     char *response_buffer;
     int response_length;
 
@@ -12,21 +19,59 @@ int hislip0_message_sync(int socket, int sessionID, uint32_t message_id, void *b
         printf("Received command: %s\n", (char *) buffer);
     }
 
-    if (strcmp(buffer, "*IDN?\n") == 0)
-    {
-        response_buffer = "WOPR Computer,2026,A0123456789,V0.0.1\n";
-        response_length = strlen(response_buffer);
+    if (payload_accumulated_size == 0) {
+        data = malloc(length);
+    } else {
+        data = realloc(sync_data, payload_accumulated_size + length);
     }
-    else
-    {
-        response_buffer = NULL;
-        response_length = 0;
+    if (data == NULL) {
+        payload_accumulated_size = 0;
+        if (sync_data != NULL) {
+            free(sync_data);
+            sync_data = NULL;
+        }
+        // TODO: respond error?
+        return -1;
+    }
+    sync_data = data;
+
+    memcpy(sync_data+payload_accumulated_size, buffer, length);
+    payload_accumulated_size += length;
+
+    if (end) {
+
+        if (strcmp(sync_data, "*IDN?\n") == 0)
+        {
+            response_buffer = "WOPR Computer,2026,A0123456789,V0.0.1\n";
+            response_length = strlen(response_buffer);
+        }
+        else if (strcmp(sync_data, "MMEM:DATA?\n") == 0)
+        {
+            response_buffer = "WOPR Computer,2026,A0123456789,V0.0.1\n";
+            response_length = 3 * 1024 * 1024;
+        }
+        else if (strcmp(sync_data, "*CLS;*IDN?\n") == 0)
+        {
+            response_buffer = "WOPR Computer,2026,A0123456789,V0.0.1\n";
+            response_length = strlen(response_buffer);
+        }
+        else
+        {
+            response_buffer = NULL;
+            response_length = 0;
+        }
+
+        payload_accumulated_size = 0;
+        free(sync_data);
+        sync_data = NULL;
+
+        return hs_server_send_response(msg_ctx, response_buffer, response_length);
     }
 
-    return hs_server_send_response(socket, sessionID, message_id, response_buffer, response_length, timeout);
+    return 0;
 }
 
-int hislip0_message_async(int socket, uint32_t message_id, void *buffer, int length, int timeout)
+int hislip0_message_async(hs_msg_ctx_t *msg_ctx, void *buffer, int length, bool end)
 {
     return 0;
 }
