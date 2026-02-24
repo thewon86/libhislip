@@ -38,7 +38,7 @@ struct hs_subaddress_data
 {
     char *subaddress;
     hs_subaddress_callbacks_t callbacks;
-    LIST_ENTRY(hs_subaddress_data_t) entries;
+    LIST_ENTRY(hs_subaddress_data) entries;
 
 };
 
