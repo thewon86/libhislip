@@ -32,12 +32,10 @@ API.
 #include <string.h>
 #include <hislip/server.h>
 
-int hislip0_message_sync(int socket,
-                         int sessionID,
-                         uint32_t message_id,
+int hislip0_message_sync(hs_msg_ctx_t *msg_ctx,
                          void *buffer,
                          int length,
-                         int timeout)
+                         bool end)
 {
     char *response_buffer;
     int response_length;
@@ -58,19 +56,15 @@ int hislip0_message_sync(int socket,
         response_length = 0;
     }
 
-    return hs_server_send_response(socket,
-                                   sessionID,
-                                   message_id,
+    return hs_server_send_response(msg_ctx,
                                    response_buffer,
-                                   response_length,
-                                   timeout);
+                                   response_length);
 }
 
-int hislip0_message_async(int socket,
-                          uint32_t message_id,
+int hislip0_message_async(hs_msg_ctx_t *msg_ctx,
                           void *buffer,
                           int length,
-                          int timeout)
+                          bool end)
 {
     return 0;
 }
