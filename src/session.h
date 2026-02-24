@@ -34,6 +34,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <hislip/server.h>
+#include <server_p.h>
 
 #define MAX_SESSIONS 256
 

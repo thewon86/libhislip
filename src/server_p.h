@@ -31,42 +31,21 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/queue.h>
+#include <hislip/common.h>
 
-typedef struct hs_subaddress_data hs_subaddress_data_t;
-typedef struct hs_message_context hs_msg_ctx_t;
-
-typedef struct
+struct hs_subaddress_data
 {
-    int (*message_sync)(hs_msg_ctx_t *msg_ctx, void *buffer, int length, bool end);
-    int (*message_async)(hs_msg_ctx_t *msg_ctx, void *buffer, int length, bool end);
+    char *subaddress;
+    hs_subaddress_callbacks_t callbacks;
+    LIST_ENTRY(hs_subaddress_data_t) entries;
 
-} hs_subaddress_callbacks_t;
+};
 
-typedef struct
+struct hs_message_context
 {
-    int port;
-    int connections_max;
-    uint64_t message_size_max;
-    int message_timeout;
-
-} hs_server_config_t;
-
-typedef struct hs_server
-{
-    int (*tcp_start)(int port, int n, void (*connection_callback)(int socket, void *data), void *data);
-    int (*tcp_read)(int socket, void *buffer, int length, int timeout);
-    int (*tcp_write)(int socket, void *buffer, int length, int timeout);
-    int (*tcp_stop)(int socket);
-
-    hs_server_config_t config;
-    hs_subaddress_data_t *subaddress_data;
-
-    uint32_t asyncLock, asyncLockCnt;
-} hs_server_t;
-
-/* Server API */
-int hs_server_config_init(hs_server_config_t *config);
-int hs_server_init(hs_server_t *server, hs_server_config_t config);
-int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t callbacks);
-int hs_server_run(hs_server_t *server);
-int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length);
+    int socket;
+    int sessionID;
+    uint32_t message_id;
+    int timeout;
+};
