@@ -173,11 +173,11 @@ int msg_receive(int socket, void **message, uint64_t payload_size_max, int timeo
     header.payload_length = ntohll(header.payload_length);
 
     debug_printf("Received message:\n");
-    debug_printf(" prologue = %d\n", header.prologue);
-    debug_printf(" type = %d\n", header.type);
-    debug_printf(" control_code = %d\n", header.control_code);
-    debug_printf(" parameter = %d\n", header.parameter);
-    debug_printf(" payload_length = %ld\n", header.payload_length);
+    debug_printf(" prologue = %u\n", header.prologue);
+    debug_printf(" type = %u\n", header.type);
+    debug_printf(" control_code = %u\n", header.control_code);
+    debug_printf(" parameter = %u\n", header.parameter);
+    debug_printf(" payload_length = %lu\n", header.payload_length);
 
     // Verify message header
     if (msg_header_verify(&header))
@@ -243,11 +243,11 @@ int msg_send(int socket, void *message, int timeout)
     int length = MSG_HEADER_SIZE + ntohll(header->payload_length);
 
     debug_printf("Sending message:\n");
-    debug_printf(" prologue = %d\n", ntohs(header->prologue));
-    debug_printf(" type = %d\n", header->type);
-    debug_printf(" control_code = %d\n", header->control_code);
-    debug_printf(" parameter = %d\n", ntohl(header->parameter));
-    debug_printf(" payload_length = %ld\n", ntohll(header->payload_length));
+    debug_printf(" prologue = %u\n", ntohs(header->prologue));
+    debug_printf(" type = %u\n", header->type);
+    debug_printf(" control_code = %u\n", header->control_code);
+    debug_printf(" parameter = %u\n", ntohl(header->parameter));
+    debug_printf(" payload_length = %lu\n", ntohll(header->payload_length));
 
     // Send message
     return tcp_write(socket, message, length, timeout);

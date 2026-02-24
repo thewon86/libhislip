@@ -131,11 +131,11 @@ static void hs_process(int socket, hs_server_t *server)
         msg_header.payload_length = ntohll(msg_header.payload_length);
 
         debug_printf("Received message:\n");
-        debug_printf(" prologue = %d\n", msg_header.prologue);
-        debug_printf(" type = %d\n", msg_header.type);
-        debug_printf(" control_code = %d\n", msg_header.control_code);
-        debug_printf(" parameter = %d\n", msg_header.parameter);
-        debug_printf(" payload_length = %ld\n", msg_header.payload_length);
+        debug_printf(" prologue = %u\n", msg_header.prologue);
+        debug_printf(" type = %u\n", msg_header.type);
+        debug_printf(" control_code = %u\n", msg_header.control_code);
+        debug_printf(" parameter = %u\n", msg_header.parameter);
+        debug_printf(" payload_length = %lu\n", msg_header.payload_length);
 
         // Verify message header
         if (msg_header_verify(&msg_header))
@@ -249,7 +249,7 @@ static void hs_process(int socket, hs_server_t *server)
                 break;
 
             case FatalError:
-                debug_printf("FatalError: %.*s\n", msg_header.payload_length, payload);
+                debug_printf("FatalError: %.*s\n", (int)msg_header.payload_length, (char *)payload);
                 break;
 
             case Error:
@@ -302,7 +302,7 @@ static void hs_process(int socket, hs_server_t *server)
             {
                 // FIXME: Accumulate payload
                 message_id = msg_header.parameter;
-                debug_printf("Received Data message (message ID = %d)\n", message_id);
+                debug_printf("Received Data message (message ID = %u)\n", message_id);
 
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
@@ -323,7 +323,7 @@ static void hs_process(int socket, hs_server_t *server)
                 // FIXME: Allocate memory for full payload and copy payloads
                 // accumulated
                 message_id = msg_header.parameter;
-                debug_printf("Received DataEnd message (message ID = %d)\n", message_id);
+                debug_printf("Received DataEnd message (message ID = %u)\n", message_id);
 
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
@@ -416,13 +416,13 @@ static void hs_process(int socket, hs_server_t *server)
 
                 debug_printf("Received SessionID = %d\n", sessionID);
 
-                uint64_t *size_p = (uint64_t *)payload;
-                uint64_t size = ntohll(*size_p);
+                uint64_t size_p = *(uint64_t *)payload;
+                uint64_t size = ntohll(size_p);
 
-                debug_printf("(Client) AsyncMaximumMessageSize message (size = %ld)\n", size);
+                debug_printf("(Client) AsyncMaximumMessageSize message (size = %lu)\n", size);
                 session[sessionID].client_message_size_max = size;
 
-                debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %ld)\n", session[sessionID].server_message_size_max);
+                debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %lu)\n", session[sessionID].server_message_size_max);
                 size = ntohll(session[sessionID].server_message_size_max);
                 msg_create(&message, AsyncMaximumMessageSizeResponse, 0, 0, 8, &size);
 
@@ -641,7 +641,7 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
     // Calculate how many message bytes to send
     uint64_t message_bytes_remaining = length;
 
-    debug_printf("Sending message length: %d; max: %d\n", message_bytes_remaining, message_payload_max);
+    debug_printf("Sending message length: %lu; max: %lu\n" , message_bytes_remaining, message_payload_max);
     control_code = CC_RMT_DELIVERED;
     while (message_bytes_remaining)
     {
@@ -672,14 +672,6 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
 
         control_code = CC_RMT_NOT_DELIVERED;
     }
-
-//    msg_create(&message, DataEnd, CC_RMT_DELIVERED, message_id, length, data);
-
-//    // Send DataEnd response message
-//    msg_send(socket, message, timeout);
-//    free(message);
-
-//    debug_printf("Sent DataEnd response message (message ID = %d)\n", message_id);
 
     return length;
 }
