@@ -632,6 +632,7 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
 {
     // Create DataEnd response message
     void *message = NULL;
+    char *pdata = (char *)data;
     uint8_t control_code;
     uint64_t message_payload_max;
     int64_t message_bytes_sent;
@@ -639,23 +640,21 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
     message_payload_max = session[msg_ctx->sessionID].client_message_size_max - MSG_HEADER_SIZE;
 
     // Calculate how many message bytes to send
-    uint64_t message_bytes_remaining = length;
+    uint64_t message_bytes_remaining = length, message_bytes_off = 0;
 
     debug_printf("Sending message length: %lu; max: %lu\n" , message_bytes_remaining, message_payload_max);
     control_code = CC_RMT_DELIVERED;
     while (message_bytes_remaining)
     {
         // Create Data message
-        control_code = CC_RMT_NOT_DELIVERED;
-
         if (message_bytes_remaining > message_payload_max)
         {
-            msg_create(&message, Data, control_code, msg_ctx->message_id, message_payload_max, data);
+            msg_create(&message, Data, control_code, msg_ctx->message_id, message_payload_max, (void*)(pdata+message_bytes_off));
             debug_printf("Sending Data message (message ID = %u)\n", msg_ctx->message_id);
         }
         else
         {
-            msg_create(&message, DataEnd, control_code, msg_ctx->message_id, message_bytes_remaining, data);
+            msg_create(&message, DataEnd, control_code, msg_ctx->message_id, message_bytes_remaining, (void*)(pdata+message_bytes_off));
             debug_printf("Sending DataEnd message (message ID = %u)\n", msg_ctx->message_id);
         }
 
@@ -669,6 +668,7 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
         }
 
         message_bytes_remaining -= (message_bytes_sent - MSG_HEADER_SIZE);
+        message_bytes_off += (message_bytes_sent - MSG_HEADER_SIZE);
 
         control_code = CC_RMT_NOT_DELIVERED;
     }
