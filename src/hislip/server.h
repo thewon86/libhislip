@@ -70,3 +70,4 @@ int hs_server_init(hs_server_t *server, hs_server_config_t config);
 int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_subaddress_callbacks_t callbacks);
 int hs_server_run(hs_server_t *server);
 int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length);
+int hs_server_send_message(hs_msg_ctx_t *msg_ctx, void *data, int length, bool end);

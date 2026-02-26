@@ -48,4 +48,6 @@ struct hs_message_context
     int sessionID;
     uint32_t message_id;
     int timeout;
+
+    bool rmt;
 };

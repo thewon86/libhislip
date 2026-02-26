@@ -675,3 +675,43 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
 
     return length;
 }
+
+EXPORT int hs_server_send_message(hs_msg_ctx_t *msg_ctx, void *data, int length, bool end)
+{
+    void *message = NULL;
+    uint8_t control_code;
+    uint64_t message_payload_max;
+    int64_t message_bytes_sent;
+
+    message_payload_max = session[msg_ctx->sessionID].client_message_size_max - MSG_HEADER_SIZE;
+
+    // Calculate how many message bytes to send
+    uint64_t message_bytes_remaining = length;
+
+    debug_printf("Sending message length: %lu; max: %lu\n" , message_bytes_remaining, message_payload_max);
+    if (msg_ctx->rmt) {
+        control_code = CC_RMT_DELIVERED;
+    } else {
+        control_code = CC_RMT_NOT_DELIVERED;
+    }
+    if (end) {
+        msg_create(&message, DataEnd, control_code, msg_ctx->message_id, length, data);
+        debug_printf("Sending DataEnd message (message ID = %u)\n", msg_ctx->message_id);
+        msg_ctx->rmt = true;
+    } else {
+        msg_create(&message, Data, control_code, msg_ctx->message_id, length, data);
+        debug_printf("Sending Data message (message ID = %u)\n", msg_ctx->message_id);
+        msg_ctx->rmt = false;
+    }
+
+    message_bytes_sent = msg_send(msg_ctx->socket, message, msg_ctx->timeout);
+    free(message);
+    if (message_bytes_sent < 0)
+    {
+        error_printf("Sending Data error!!!\n");
+        // Throw fatal error
+        return -1;
+    }
+
+    return length;
+}
