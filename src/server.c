@@ -313,6 +313,7 @@ static void hs_process(int socket, hs_server_t *server)
                     msg_ctx.sessionID = sessionID;
                     msg_ctx.message_id = message_id;
                     msg_ctx.timeout = timeout;
+                    msg_ctx.rmt = true;
                     subaddress_data->callbacks.message_sync(&msg_ctx, payload, msg_header.payload_length, false);
                 }
             }
@@ -334,6 +335,7 @@ static void hs_process(int socket, hs_server_t *server)
                     msg_ctx.sessionID = sessionID;
                     msg_ctx.message_id = message_id;
                     msg_ctx.timeout = timeout;
+                    msg_ctx.rmt = true;
                     subaddress_data->callbacks.message_sync(&msg_ctx, payload, msg_header.payload_length, true);
                 }
             }
@@ -387,8 +389,8 @@ static void hs_process(int socket, hs_server_t *server)
                     error_printf("Unkown RemoteLocalControl code\n");
                     break;
                 }
-#endif \
-    // TODO: send rlc to application
+#endif
+                // TODO: send rlc to application
 
                 msg_create(&message, AsyncRemoteLocalResponse, 0, 0, 0, NULL);
 
@@ -421,6 +423,8 @@ static void hs_process(int socket, hs_server_t *server)
 
                 debug_printf("(Client) AsyncMaximumMessageSize message (size = %lu)\n", size);
                 session[sessionID].client_message_size_max = size;
+                free(session[sessionID].data);
+                session[sessionID].data = malloc(size);
 
                 debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %lu)\n", session[sessionID].server_message_size_max);
                 size = ntohll(session[sessionID].server_message_size_max);
@@ -538,10 +542,6 @@ __exit_hs_process:
         if (socket == session[sessionID].socket_async) session[sessionID].socket_async = -1;
         if ((session[sessionID].socket_sync == -1)
          && (session[sessionID].socket_async == -1)) {
-            if (payload_accumulated_size != 0) {
-                free(session[sessionID].data);
-                session[sessionID].data = NULL;
-            }
             session_free(sessionID);
         }
     }
@@ -714,4 +714,42 @@ EXPORT int hs_server_send_message(hs_msg_ctx_t *msg_ctx, void *data, int length,
     }
 
     return length;
+}
+
+EXPORT int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length)
+{
+    char *pdata = (char *)data;
+    uint64_t clnt_pl_max, data_len;
+    int64_t bytes_written = 0, write_bytes = 0;
+
+    // Calculate how many message bytes to write
+    uint64_t ramaining = length;
+
+    clnt_pl_max = session[msg_ctx->sessionID].client_message_size_max - MSG_HEADER_SIZE;
+    data_len = session[msg_ctx->sessionID].data_len;
+
+    while (ramaining > (clnt_pl_max - data_len)) {
+        write_bytes = clnt_pl_max - data_len;
+        memcpy(&session[msg_ctx->sessionID].data[data_len], pdata+bytes_written, write_bytes);
+        bytes_written += write_bytes;
+        ramaining -= write_bytes;
+        hs_server_send_message(msg_ctx, session[msg_ctx->sessionID].data, clnt_pl_max, false);
+        data_len = 0;
+    }
+    if (ramaining > 0) {
+        write_bytes = ramaining;
+        memcpy(&session[msg_ctx->sessionID].data[data_len], pdata+bytes_written, write_bytes);
+        data_len += write_bytes;
+    }
+    session[msg_ctx->sessionID].data_len = data_len;
+
+    return length;
+}
+
+EXPORT int hs_server_flush(hs_msg_ctx_t *msg_ctx)
+{
+    hs_server_send_message(msg_ctx, session[msg_ctx->sessionID].data, session[msg_ctx->sessionID].data_len, true);
+    session[msg_ctx->sessionID].data_len = 0;
+
+    return 0;
 }

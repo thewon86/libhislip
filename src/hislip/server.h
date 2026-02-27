@@ -71,3 +71,5 @@ int hs_server_register_subaddress(hs_server_t *server, char *subaddress, hs_suba
 int hs_server_run(hs_server_t *server);
 int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length);
 int hs_server_send_message(hs_msg_ctx_t *msg_ctx, void *data, int length, bool end);
+int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length);
+int hs_server_flush(hs_msg_ctx_t *msg_ctx);

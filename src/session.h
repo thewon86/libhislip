@@ -59,7 +59,8 @@ typedef struct
     hs_subaddress_data_t *subaddress_data;
 
     // Session data
-    void *data;
+    uint8_t *data;
+    int data_len;
 } session_t;
 
 extern session_t session[MAX_SESSIONS];

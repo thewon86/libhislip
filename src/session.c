@@ -28,6 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <pthread.h>
@@ -58,10 +59,13 @@ int session_new(void)
             session[i].socket_sync = -1;
             session[i].socket_async = -1;
             session[i].data = NULL;
+            session[i].data_len = 0;
             session[i].subaddress_data = NULL;
             session[i].message_id = 0xFFFFFF00;
             session[i].client_message_size_max = 256;
             session[i].server_message_size_max = 256;
+
+            session[i].data = malloc(256);
 
             session_available = true;
             break;
@@ -100,6 +104,7 @@ int session_free(int i)
     }
 
     // Free session
+    free(session[i].data);
     session[i].allocated = false;
     pthread_mutex_unlock(&session_mutex);
     return 0;
