@@ -727,7 +727,7 @@ EXPORT int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length)
 
     clnt_pl_max = session[msg_ctx->sessionID].client_message_size_max - MSG_HEADER_SIZE;
     data_len = session[msg_ctx->sessionID].data_len;
-
+    debug_printf("data: %p, %d, %d\n", data, length, data_len);
     while (ramaining > (clnt_pl_max - data_len)) {
         write_bytes = clnt_pl_max - data_len;
         memcpy(&session[msg_ctx->sessionID].data[data_len], pdata+bytes_written, write_bytes);
@@ -748,6 +748,7 @@ EXPORT int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length)
 
 EXPORT int hs_server_flush(hs_msg_ctx_t *msg_ctx)
 {
+    debug_printf("data: %d\n", session[msg_ctx->sessionID].data_len);
     hs_server_send_message(msg_ctx, session[msg_ctx->sessionID].data, session[msg_ctx->sessionID].data_len, true);
     session[msg_ctx->sessionID].data_len = 0;
 
