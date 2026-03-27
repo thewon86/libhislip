@@ -209,10 +209,12 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
     int socket = session[device].socket_sync;
     uint64_t message_payload_max = session[device].server_message_size_max - MSG_HEADER_SIZE;
     int64_t message_bytes_sent;
+    char *pdata;
 
     // Calculate how many message bytes to send
     uint64_t message_bytes_remaining = length;
 
+    pdata = (char *)data;
     control_code = CC_RMT_DELIVERED;
     while (message_bytes_remaining)
     {
@@ -224,12 +226,12 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
 
         if (message_bytes_remaining > message_payload_max)
         {
-            msg_create(&message, Data, control_code, parameter, message_payload_max, data);
+            msg_create(&message, Data, control_code, parameter, message_payload_max, pdata);
             debug_printf("Sending Data message (message ID = %u)\n", parameter);
         }
         else
         {
-            msg_create(&message, DataEnd, control_code, parameter, message_bytes_remaining, data);
+            msg_create(&message, DataEnd, control_code, parameter, message_bytes_remaining, pdata);
             debug_printf("Sending DataEnd message (message ID = %u)\n", parameter);
         }
 
@@ -242,6 +244,7 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
         }
 
         message_bytes_remaining -= (message_bytes_sent - MSG_HEADER_SIZE);
+        pdata += (message_bytes_sent - MSG_HEADER_SIZE);
 
         control_code = CC_RMT_NOT_DELIVERED;
     }
@@ -254,11 +257,12 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
     msg_header_t *header;
     void *message = NULL;
     int socket = session[device].socket_sync;
-    char *payload_p;
+    char *payload_p, *pdata;
     uint64_t payload_length, message_bytes_recv = 0, message_bytes_remaining = length;
 
     // Receive loop - receive Data messages and accumulate payload until DataEnd
     // message is received.
+    pdata = (char*)data;
     while (1)
     {
         // Wait for message
@@ -276,15 +280,16 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
         if (message_bytes_remaining > 0) {
             if (payload_length > message_bytes_remaining)
             {
-                memcpy(data+message_bytes_recv, payload_p, message_bytes_remaining);
+                memcpy(pdata, payload_p, message_bytes_remaining);
                 message_bytes_remaining = 0;
             } else {
-                memcpy(data+message_bytes_recv, payload_p, payload_length);
+                memcpy(pdata, payload_p, payload_length);
                 message_bytes_remaining -= payload_length;
             }
         }
 
         message_bytes_recv += payload_length;
+        pdata += payload_length;
 
         if (header->type == DataEnd)
         {
