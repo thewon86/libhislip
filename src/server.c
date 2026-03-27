@@ -51,28 +51,6 @@ typedef LIST_HEAD(subaddress_head_t, hs_subaddress_data) subaddress_head_t;
 subaddress_head_t *subaddress_head;
 hs_subaddress_data_t *subaddress_default = NULL;
 
-static int server_subaddress_link(hs_server_t *server, char *subaddress, hs_subaddress_data_t *subaddress_data)
-{
-    bool match_found = false;
-    hs_subaddress_data_t *sd;
-
-    // Lookup subaddress in list of registered subaddresses
-    LIST_FOREACH(sd, subaddress_head, entries)
-    {
-        if (strcmp(sd->subaddress, subaddress) == 0)
-        {
-            match_found = true;
-            subaddress_data = sd;
-            debug_printf("Found subaddress\n");
-            break;
-        }
-    }
-
-    // Link connection session to subaddress
-
-    return match_found;
-}
-
 static hs_subaddress_data_t *find_subaddress_data(char *subaddress)
 {
     hs_subaddress_data_t *sd;
