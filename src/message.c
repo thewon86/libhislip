@@ -223,7 +223,7 @@ int msg_receive(int socket, void **message, uint64_t payload_size_max, int timeo
     if (header.payload_length > 0)
     {
         // Read until payload received
-        payload_p = *message + MSG_HEADER_SIZE;
+        payload_p = (char *)*message + MSG_HEADER_SIZE;
 
         if ((bytes_read = tcp_read(socket, payload_p, header.payload_length, timeout)) <= 0)
         {
