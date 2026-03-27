@@ -640,7 +640,7 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
     message_payload_max = session[msg_ctx->sessionID].client_message_size_max - MSG_HEADER_SIZE;
 
     // Calculate how many message bytes to send
-    uint64_t message_bytes_remaining = length, message_bytes_off = 0;
+    uint64_t message_bytes_remaining = length;
 
     debug_printf("Sending message length: %lu; max: %lu\n" , message_bytes_remaining, message_payload_max);
     control_code = CC_RMT_DELIVERED;
@@ -649,12 +649,12 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
         // Create Data message
         if (message_bytes_remaining > message_payload_max)
         {
-            msg_create(&message, Data, control_code, msg_ctx->message_id, message_payload_max, (void*)(pdata+message_bytes_off));
+            msg_create(&message, Data, control_code, msg_ctx->message_id, message_payload_max, (void*)(pdata));
             debug_printf("Sending Data message (message ID = %u)\n", msg_ctx->message_id);
         }
         else
         {
-            msg_create(&message, DataEnd, control_code, msg_ctx->message_id, message_bytes_remaining, (void*)(pdata+message_bytes_off));
+            msg_create(&message, DataEnd, control_code, msg_ctx->message_id, message_bytes_remaining, (void*)(pdata));
             debug_printf("Sending DataEnd message (message ID = %u)\n", msg_ctx->message_id);
         }
 
@@ -668,7 +668,7 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
         }
 
         message_bytes_remaining -= (message_bytes_sent - MSG_HEADER_SIZE);
-        message_bytes_off += (message_bytes_sent - MSG_HEADER_SIZE);
+        pdata += (message_bytes_sent - MSG_HEADER_SIZE);
 
         control_code = CC_RMT_NOT_DELIVERED;
     }
@@ -720,7 +720,7 @@ EXPORT int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length)
 {
     char *pdata = (char *)data;
     uint64_t clnt_pl_max, data_len;
-    int64_t bytes_written = 0, write_bytes = 0;
+    int64_t write_bytes = 0;
 
     // Calculate how many message bytes to write
     uint64_t ramaining = length;
@@ -730,15 +730,15 @@ EXPORT int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length)
     debug_printf("data: %p, %d, %d\n", data, length, data_len);
     while (ramaining > (clnt_pl_max - data_len)) {
         write_bytes = clnt_pl_max - data_len;
-        memcpy(&session[msg_ctx->sessionID].data[data_len], pdata+bytes_written, write_bytes);
-        bytes_written += write_bytes;
+        memcpy(&session[msg_ctx->sessionID].data[data_len], (const void *)pdata, write_bytes);
+        pdata += write_bytes;
         ramaining -= write_bytes;
         hs_server_send_message(msg_ctx, session[msg_ctx->sessionID].data, clnt_pl_max, false);
         data_len = 0;
     }
     if (ramaining > 0) {
         write_bytes = ramaining;
-        memcpy(&session[msg_ctx->sessionID].data[data_len], pdata+bytes_written, write_bytes);
+        memcpy(&session[msg_ctx->sessionID].data[data_len], (const void *)pdata, write_bytes);
         data_len += write_bytes;
     }
     session[msg_ctx->sessionID].data_len = data_len;
