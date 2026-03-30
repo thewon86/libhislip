@@ -127,7 +127,8 @@ int tcp_write(int sd, void *buffer, int length, int timeout)
         if (status == 0)
         {
             error_printf("Timeout\n");
-            return 0;
+            errno = ETIMEDOUT;
+            return -2;
         }
         ret = write(sd, (char*)buffer+wr, length-wr);
         if ((ret < 0) && (errno == EINTR)) continue;
@@ -171,7 +172,8 @@ int tcp_read(int sd, void *buffer, int length, int timeout)
         if (status == 0)
         {
             error_printf("Timeout\n");
-            return 0;
+            errno = ETIMEDOUT;
+            return -2;
         }
         ret = read(sd, (char*)buffer+rd, length-rd);
         if ((ret < 0) && (errno == EINTR)) continue;
