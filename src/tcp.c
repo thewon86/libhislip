@@ -273,16 +273,17 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
         if (connection_data == NULL)
         {
             error_printf("malloc() failed\n");
+        } else {
+            connection_data->sd = client_socket;
+            connection_data->data = data;
+            connection_data->connection_callback = connection_callback;
+
+            // Create connection thread
+            pthread_create(&thread, NULL, connection_thread, connection_data);
+
+            // Make sure connection thread does its own cleanup upon termination
+            pthread_detach(thread);
         }
-        connection_data->sd = client_socket;
-        connection_data->data = data;
-        connection_data->connection_callback = connection_callback;
-
-        // Create connection thread
-        pthread_create(&thread, NULL, connection_thread, connection_data);
-
-        // Make sure connection thread does its own cleanup upon termination
-        pthread_detach(thread);
     }
 
     return 0;
