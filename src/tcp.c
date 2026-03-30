@@ -100,25 +100,23 @@ int tcp_connect(int *sd, char *address, int port, int timeout)
 int tcp_write(int sd, void *buffer, int length, int timeout)
 {
     int status;
-    struct timeval tv;
+    struct timeval tv, *ptv;
     fd_set wdfs;
     ssize_t ret, wr = 0;
 
     // Set timeout
-    tv.tv_sec = 0;
-    tv.tv_usec = timeout * 1000;
+    if (timeout > 0) {
+        tv.tv_sec = timeout / 1000;
+        tv.tv_usec = (timeout % 1000) * 1000;
+        ptv = &tv;
+    } else {
+        ptv = NULL;
+    }
 
     do {
         FD_ZERO(&wdfs);
         FD_SET(sd, &wdfs);
-        if (timeout)
-        {
-            status = select(sd + 1, NULL, &wdfs, NULL, &tv);
-        }
-        else
-        {
-            status = select(sd + 1, NULL, &wdfs, NULL, NULL);
-        }
+        status = select(sd + 1, NULL, &wdfs, NULL, ptv);
         if ((status < 0) && (errno == EINTR)) continue;
         if (status == -1)
         {
@@ -145,25 +143,23 @@ int tcp_write(int sd, void *buffer, int length, int timeout)
 int tcp_read(int sd, void *buffer, int length, int timeout)
 {
     int status;
-    struct timeval tv;
+    struct timeval tv, *ptv;
     fd_set rdfs;
     ssize_t ret, rd = 0;
 
     // Set timeout
-    tv.tv_sec = 0;
-    tv.tv_usec = timeout * 1000;
+    if (timeout > 0) {
+        tv.tv_sec = timeout / 1000;
+        tv.tv_usec = (timeout % 1000) * 1000;
+        ptv = &tv;
+    } else {
+        ptv = NULL;
+    }
 
     do {
         FD_ZERO(&rdfs);
         FD_SET(sd, &rdfs);
-        if (timeout)
-        {
-            status = select(sd + 1, &rdfs, NULL, NULL, &tv);
-        }
-        else
-        {
-            status = select(sd + 1, &rdfs, NULL, NULL, NULL);
-        }
+        status = select(sd + 1, &rdfs, NULL, NULL, ptv);
         if ((status < 0) && (errno == EINTR)) continue;
         if (status == -1)
         {
