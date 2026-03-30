@@ -39,8 +39,14 @@
 # define htonll(x) (x)
 # define ntohll(x) (x)
 #else
-# define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-# define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+static inline uint64_t htonll(uint64_t x)
+{
+    return (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32));
+}
+static inline uint64_t ntohll(uint64_t x)
+{
+    return (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32));
+}
 #endif
 
 #define MSG_HEADER_SIZE 16
