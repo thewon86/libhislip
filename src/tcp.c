@@ -52,48 +52,49 @@ typedef struct
 
 int tcp_connect(int *sd, char *address, int port, int timeout)
 {
-    struct sockaddr_in server_address;
-    struct hostent *host;
+    struct addrinfo hints;
+    struct addrinfo *res = NULL, *rp;
+    char portstr[6];
+    int s = -1;
+    int err;
 
     UNUSED(timeout);
 
-    // Create a TCP/IP stream socket
-    if ((*sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-    {
-        error_printf("socket() call failed\n");
-        return -1;
-    }
+    snprintf(portstr, sizeof(portstr), "%d", port);
 
     // Construct the server address structure
-    memset(&server_address, 0, sizeof(server_address));
-    server_address.sin_family      = AF_INET;
-    server_address.sin_port        = htons(port);
-    server_address.sin_addr.s_addr = inet_addr(address);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;        /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM;    /* TCP */
+    hints.ai_flags = AI_ADDRCONFIG;     /* Only return IPv4/IPv6 if configured */
 
-    if (server_address.sin_addr.s_addr == (unsigned long) INADDR_NONE)
-    {
-        // Look up host address
-        host = gethostbyname(address);
-
-        if (host == (struct hostent *) NULL)
-        {
-            error_printf("Host not found\n");
-            close(*sd);
-            return -1;
-        }
-
-        memcpy(&server_address.sin_addr, host->h_addr, sizeof(server_address.sin_addr));
-    }
-
-    // Establish connection to server
-    if (connect(*sd, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-    {
-        error_printf("connect() call failed\n");
-        close(*sd);
+    err = getaddrinfo(address, portstr, &hints, &res);
+    if (err != 0) {
+        error_printf("getaddrinfo failed: %s\n", gai_strerror(err));
         return -1;
     }
 
-    return 0;
+    // Look up host address
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+        s = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (s == -1) continue;
+
+        // Establish connection to server
+        if (connect(s, rp->ai_addr, rp->ai_addrlen) == 0) {
+            /* success */
+            *sd = s;
+            freeaddrinfo(res);
+            return 0;
+        }
+
+        close(s);
+        s = -1;
+    }
+
+    freeaddrinfo(res);
+    error_printf("connect() call failed\n");
+
+    return -1;
 }
 
 int tcp_write(int sd, void *buffer, int length, int timeout)
