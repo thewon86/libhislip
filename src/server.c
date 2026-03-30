@@ -109,11 +109,11 @@ static void hs_process(int socket, hs_server_t *server)
         msg_header.payload_length = ntohll(msg_header.payload_length);
 
         debug_printf("Received message:\n");
-        debug_printf(" prologue = %u\n", msg_header.prologue);
-        debug_printf(" type = %u\n", msg_header.type);
-        debug_printf(" control_code = %u\n", msg_header.control_code);
-        debug_printf(" parameter = %u\n", msg_header.parameter);
-        debug_printf(" payload_length = %lu\n", msg_header.payload_length);
+        debug_printf(" prologue = %" PRIu32 "\n", msg_header.prologue);
+        debug_printf(" type = %" PRIu32 "\n", msg_header.type);
+        debug_printf(" control_code = %" PRIu32 "\n", msg_header.control_code);
+        debug_printf(" parameter = %" PRIu32 "\n", msg_header.parameter);
+        debug_printf(" payload_length = %" PRIu64 "\n", msg_header.payload_length);
 
         // Verify message header
         if (msg_header_verify(&msg_header))
@@ -280,7 +280,7 @@ static void hs_process(int socket, hs_server_t *server)
             {
                 // FIXME: Accumulate payload
                 message_id = msg_header.parameter;
-                debug_printf("Received Data message (message ID = %u)\n", message_id);
+                debug_printf("Received Data message (message ID = %" PRIu32 ")\n", message_id);
 
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
@@ -302,7 +302,7 @@ static void hs_process(int socket, hs_server_t *server)
                 // FIXME: Allocate memory for full payload and copy payloads
                 // accumulated
                 message_id = msg_header.parameter;
-                debug_printf("Received DataEnd message (message ID = %u)\n", message_id);
+                debug_printf("Received DataEnd message (message ID = %" PRIu32 ")\n", message_id);
 
                 hs_subaddress_data_t *subaddress_data = session[sessionID].subaddress_data;
 
@@ -399,12 +399,12 @@ static void hs_process(int socket, hs_server_t *server)
                 uint64_t size_p = *(uint64_t *)payload;
                 uint64_t size = ntohll(size_p);
 
-                debug_printf("(Client) AsyncMaximumMessageSize message (size = %lu)\n", size);
+                debug_printf("(Client) AsyncMaximumMessageSize message (size = %" PRIu64 ")\n", size);
                 session[sessionID].client_message_size_max = size;
                 free(session[sessionID].data);
                 session[sessionID].data = malloc(size);
 
-                debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %lu)\n", session[sessionID].server_message_size_max);
+                debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %" PRIu64 ")\n", session[sessionID].server_message_size_max);
                 size = ntohll(session[sessionID].server_message_size_max);
                 msg_create(&message, AsyncMaximumMessageSizeResponse, 0, 0, 8, &size);
 
@@ -499,7 +499,7 @@ static void hs_process(int socket, hs_server_t *server)
                 break;
 
             default:
-                error_printf("Received Unkown message! (type = %u)\n", msg_header.type);
+                error_printf("Received Unkown message! (type = %" PRIu32 ")\n", msg_header.type);
                 break;
         }
 
@@ -620,7 +620,7 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
     // Calculate how many message bytes to send
     uint64_t message_bytes_remaining = length;
 
-    debug_printf("Sending message length: %lu; max: %lu\n" , message_bytes_remaining, message_payload_max);
+    debug_printf("Sending message length: %" PRIu64 "; max: %" PRIu64 "\n" , message_bytes_remaining, message_payload_max);
     control_code = CC_RMT_DELIVERED;
     while (message_bytes_remaining)
     {
@@ -628,12 +628,12 @@ EXPORT int hs_server_send_response(hs_msg_ctx_t *msg_ctx, void *data, int length
         if (message_bytes_remaining > message_payload_max)
         {
             msg_create(&message, Data, control_code, msg_ctx->message_id, message_payload_max, (void*)(pdata));
-            debug_printf("Sending Data message (message ID = %u)\n", msg_ctx->message_id);
+            debug_printf("Sending Data message (message ID = %" PRIu32 ")\n", msg_ctx->message_id);
         }
         else
         {
             msg_create(&message, DataEnd, control_code, msg_ctx->message_id, message_bytes_remaining, (void*)(pdata));
-            debug_printf("Sending DataEnd message (message ID = %u)\n", msg_ctx->message_id);
+            debug_printf("Sending DataEnd message (message ID = %" PRIu32 ")\n", msg_ctx->message_id);
         }
 
         message_bytes_sent = msg_send(msg_ctx->socket, message, msg_ctx->timeout);
@@ -666,7 +666,7 @@ EXPORT int hs_server_send_message(hs_msg_ctx_t *msg_ctx, void *data, int length,
     // Calculate how many message bytes to send
     uint64_t message_bytes_remaining = length;
 
-    debug_printf("Sending message length: %lu; max: %lu\n" , message_bytes_remaining, message_payload_max);
+    debug_printf("Sending message length: %" PRIu64 "; max: %" PRIu64 "\n" , message_bytes_remaining, message_payload_max);
     if (msg_ctx->rmt) {
         control_code = CC_RMT_DELIVERED;
     } else {
@@ -674,11 +674,11 @@ EXPORT int hs_server_send_message(hs_msg_ctx_t *msg_ctx, void *data, int length,
     }
     if (end) {
         msg_create(&message, DataEnd, control_code, msg_ctx->message_id, length, data);
-        debug_printf("Sending DataEnd message (message ID = %u)\n", msg_ctx->message_id);
+        debug_printf("Sending DataEnd message (message ID = %" PRIu32 ")\n", msg_ctx->message_id);
         msg_ctx->rmt = true;
     } else {
         msg_create(&message, Data, control_code, msg_ctx->message_id, length, data);
-        debug_printf("Sending Data message (message ID = %u)\n", msg_ctx->message_id);
+        debug_printf("Sending Data message (message ID = %" PRIu32 ")\n", msg_ctx->message_id);
         msg_ctx->rmt = false;
     }
 
@@ -705,7 +705,7 @@ EXPORT int hs_server_write(hs_msg_ctx_t *msg_ctx, void *data, int length)
 
     clnt_pl_max = session[msg_ctx->sessionID].client_message_size_max - MSG_HEADER_SIZE;
     data_len = session[msg_ctx->sessionID].data_len;
-    debug_printf("data: %p, %d, %d\n", data, length, data_len);
+    debug_printf("data: %p, %d, %" PRIu64 "\n", data, length, data_len);
     while (ramaining > (clnt_pl_max - data_len)) {
         write_bytes = clnt_pl_max - data_len;
         memcpy(&session[msg_ctx->sessionID].data[data_len], (const void *)pdata, write_bytes);

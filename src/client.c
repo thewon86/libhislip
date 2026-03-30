@@ -116,7 +116,7 @@ EXPORT hs_device_t hs_connect(char *address, int port, char *subaddress, int tim
 
     // Save received server SessionID
     session[device].SessionID = header->parameter &= 0xFFFF;
-    debug_printf("Received SessionID = %u\n", session[device].SessionID);
+    debug_printf("Received SessionID = %" PRIu32 "\n", session[device].SessionID);
     free(message);
 
     // Create TCP connection for async channel
@@ -160,7 +160,7 @@ EXPORT hs_device_t hs_connect(char *address, int port, char *subaddress, int tim
 
     uint16_t vendor_id = header->parameter;
 
-    debug_printf("Vendor ID = %u\n", vendor_id);
+    debug_printf("Vendor ID = %" PRIu32 "\n", vendor_id);
 
     free(message);
 
@@ -227,12 +227,12 @@ EXPORT uint64_t hs_sync_send(hs_device_t device, void *data, uint64_t length, in
         if (message_bytes_remaining > message_payload_max)
         {
             msg_create(&message, Data, control_code, parameter, message_payload_max, pdata);
-            debug_printf("Sending Data message (message ID = %u)\n", parameter);
+            debug_printf("Sending Data message (message ID = %" PRIu32 ")\n", parameter);
         }
         else
         {
             msg_create(&message, DataEnd, control_code, parameter, message_bytes_remaining, pdata);
-            debug_printf("Sending DataEnd message (message ID = %u)\n", parameter);
+            debug_printf("Sending DataEnd message (message ID = %" PRIu32 ")\n", parameter);
         }
 
         message_bytes_sent = msg_send(socket, message, timeout);
@@ -293,11 +293,11 @@ EXPORT uint64_t hs_sync_receive(hs_device_t device, void *data, uint64_t length,
 
         if (header->type == DataEnd)
         {
-            debug_printf("Received DataEnd message (message ID = %u)\n", header->parameter);
+            debug_printf("Received DataEnd message (message ID = %" PRIu32 ")\n", header->parameter);
             free(message);
             break;
         }
-        debug_printf("Received Data message (message ID = %u)\n", header->parameter);
+        debug_printf("Received Data message (message ID = %" PRIu32 ")\n", header->parameter);
         free(message);
     }
 
@@ -327,7 +327,7 @@ EXPORT uint64_t hs_set_maximum_message_size(hs_device_t device, uint64_t size, i
     // Update client message size
     session[device].client_message_size_max = size;
 
-    debug_printf("Sending AsyncMaximumMessageSize message (size = %lu)\n", size);
+    debug_printf("Sending AsyncMaximumMessageSize message (size = %" PRIu64 ")\n", size);
 
     // Create AsyncMaximumMessageSize message
     size = htonll(size);
@@ -358,7 +358,7 @@ EXPORT uint64_t hs_set_maximum_message_size(hs_device_t device, uint64_t size, i
     uint64_t *size_p = (uint64_t *)payload_p;
     size = ntohll(*size_p);
 
-    debug_printf("Received AsyncMaximumMessageSizeResponse message (size = %lu)\n", size);
+    debug_printf("Received AsyncMaximumMessageSizeResponse message (size = %" PRIu64 ")\n", size);
 
     free(message);
 

@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include <inttypes.h>
 #include "config.h"
 
 #define error_printf(format, args...) \
