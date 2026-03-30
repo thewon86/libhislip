@@ -272,6 +272,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
         if (connection_data == NULL)
         {
             error_printf("Failed to allocate memory for connection data\n");
+            close(client_socket);
         } else {
             connection_data->sd = client_socket;
             connection_data->data = data;
