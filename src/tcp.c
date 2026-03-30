@@ -279,7 +279,12 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
             connection_data->connection_callback = connection_callback;
 
             // Create connection thread
-            pthread_create(&thread, NULL, connection_thread, connection_data);
+            if (pthread_create(&thread, NULL, connection_thread, connection_data) != 0) {
+                error_printf("pthread_create failed (%s)\n", strerror(errno));
+                close(client_socket);
+                free(connection_data);
+                continue;
+            }
 
             // Make sure connection thread does its own cleanup upon termination
             pthread_detach(thread);
