@@ -221,7 +221,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
     if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
         error_printf("socket() call failed (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -238,7 +238,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
     {
         error_printf("bind() call failed (%s)\n", strerror(errno));
         close(server_socket);
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     // Allow up to N clients to be connected simultaneously
@@ -246,7 +246,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
     {
         error_printf("listen() call failed (%s)\n", strerror(errno));
         close(server_socket);
-        exit (EXIT_FAILURE);
+        return -1;
     }
 
     debug_printf("Listening for incoming client connections on port %d\n", port);
@@ -263,7 +263,7 @@ int tcp_server_start(int port, int n, void (*connection_callback)(int sd, void *
         {
             error_printf("accept() call failed (%s)\n", strerror(errno));
             close(server_socket);
-            exit (EXIT_FAILURE);
+            return -1;
         }
 
         debug_printf("Incoming connection from client (%s)\n", inet_ntoa(client_address.sin_addr));

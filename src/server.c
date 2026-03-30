@@ -536,9 +536,7 @@ EXPORT int hs_server_run(hs_server_t *server)
 {
     // Start server
     debug_printf("Starting HiSLIP server. Ver:%d.%d\n", HISLIP_VERSION_MAJOR, HISLIP_VERSION_MINOR);
-    server->tcp_start(server->config.port, server->config.connections_max, connection_callback, server);
-
-    return 0;
+    return server->tcp_start(server->config.port, server->config.connections_max, connection_callback, server);
 }
 
 EXPORT int hs_server_config_init(hs_server_config_t *config)
