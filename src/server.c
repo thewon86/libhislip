@@ -141,7 +141,7 @@ static void hs_process(int socket, hs_server_t *server)
             payload = malloc(msg_header.payload_length);
             if (payload == NULL)
             {
-                error_printf("malloc() failed\n");
+                error_printf("Failed to allocate memory for message payload\n");
                 continue;
             }
 
@@ -403,6 +403,11 @@ static void hs_process(int socket, hs_server_t *server)
                 session[sessionID].client_message_size_max = size;
                 free(session[sessionID].data);
                 session[sessionID].data = malloc(size);
+                if (session[sessionID].data == NULL) {
+                    error_printf("Failed to allocate memory for session %d data\n", sessionID);
+                    // FIXME: error?
+                    break;
+                }
 
                 debug_printf("(Server) AsyncMaximumMessageSizeResponse message (size = %" PRIu64 ")\n", session[sessionID].server_message_size_max);
                 size = ntohll(session[sessionID].server_message_size_max);
@@ -563,6 +568,11 @@ EXPORT int hs_server_init(hs_server_t *server, hs_server_config_t config)
                                                          // server structure so
                                                          // we can start
                                                          // multilple servers
+    if (subaddress_head == NULL) {
+        error_printf("Failed to allocate memory for subaddress header\n");
+        return -1;
+    }
+
     LIST_INIT(subaddress_head);
 
     // Set configuration

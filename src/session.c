@@ -47,14 +47,10 @@ int session_new(void)
     pthread_mutex_lock(&session_mutex);
 
     // Find a free session entry (i)
-    for (i=0; i<MAX_SESSIONS; i++)
+    for (i = 0; i < MAX_SESSIONS; i++)
     {
         if (session[i].allocated == false)
         {
-            // Claim session
-            session[i].allocated = true;
-            session[i].SessionID = session_id++;
-
             // Initialize session data
             session[i].socket_sync = -1;
             session[i].socket_async = -1;
@@ -66,9 +62,17 @@ int session_new(void)
             session[i].server_message_size_max = 256;
 
             session[i].data = malloc(256);
+            if (session[i].data == NULL) {
+                session[i].allocated = false;
+                continue;
+            } else {
+                // Claim session
+                session[i].allocated = true;
+                session[i].SessionID = session_id++;
 
-            session_available = true;
-            break;
+                session_available = true;
+                break;
+            }
         }
     }
 

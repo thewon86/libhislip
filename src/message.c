@@ -120,7 +120,7 @@ int msg_create(
     *message = malloc(MSG_HEADER_SIZE + payload_length);
     if (*message == NULL)
     {
-        error_printf("Failed to allocate memory for message\n");
+        error_printf("Failed to allocate memory for message header\n");
         return -1;
     }
 
@@ -212,7 +212,7 @@ int msg_receive(int socket, void **message, uint64_t payload_size_max, int timeo
     *message = malloc(MSG_HEADER_SIZE + header.payload_length);
     if (*message == NULL)
     {
-        error_printf("malloc() failed\n");
+        error_printf("Failed to allocate memory for message payload\n");
         return -1;
     }
 
